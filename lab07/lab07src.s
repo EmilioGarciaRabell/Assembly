@@ -787,7 +787,7 @@ ForHex
   LSRS R2, R2, R3  ; Shift right by 4 bits
   ANDS R2, R2, R4  ; Mask out upper bits
 
-  CMP R2,#4
+  CMP R2,#10
   BGE     ConvertToAF                ;if ASCII value >= 10,
   ADDS    R2,#'0'                    ;else, add 0 to ASCII
   B       PrintX

@@ -1118,7 +1118,7 @@ ARM Macro Assembler    Page 18 Program Title for Listing Header Goes Here
   788 0000028A 4022            ANDS             R2, R2, R4  ; Mask out upper bi
                                                             ts
   789 0000028C         
-  790 0000028C 2A04            CMP              R2,#4
+  790 0000028C 2A0A            CMP              R2,#10
   791 0000028E DA01            BGE              ConvertToAF ;if ASCII value >= 
                                                             10,
   792 00000290 3230            ADDS             R2,#'0'     ;else, add 0 to ASC
