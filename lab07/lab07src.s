@@ -608,7 +608,7 @@ EndDeqUnSuccess
 	LSLS R4, R4, #24
 	ORRS R3, R3, R4
 	MSR APSR, R3
-
+	B EndProgramDeq
 
 EndDeqSuccess
 		;clear c flag
@@ -617,7 +617,7 @@ EndDeqSuccess
 	LSLS R6,R6,#24
 	BICS R7,R7,R6
 	MSR APSR,R7
-
+EndProgramDeq
 	STR R2,[R1,#OUT_PTR]
 	POP{R2-R7, PC}
 	ENDP  
@@ -655,59 +655,49 @@ Enqueue PROC
 	LDR R7,[R1,#BUF_SIZE] ; Bufer size
 	
 	CMP R6,R7
-	BLO EndEnqUnSuccess
+	BGE EndEnqUnSuccess ; if  NUM_ENQD >= BUF_SIZE the queue is full
 
 	;if (Queue->InPointer >= Queue->BufferPast) {
 	LDR R2,[R1,#IN_PTR]; Queue->InPointer
-	LDRB R3,[R1,#NUM_ENQD]; Queue->BufferPast
-	
-	STR R0,[R1,R2] ;*(Queue->InPointer++) = Character; -----
-	ADDS R2,R2,#1
-	ADDS R3,R3,#1 ;(Queue->NumberEnqueued)++;  -----
-	 
+	STRB R0,[R2,#0] l; store address to enqueue 
+	ADDS R2,R2,#1 ; increment IN_PTR
+	STR R2,[R1,#IN_PTR]
 
-	LDR R4, [R1, #BUF_PAST]
+	LDRB R3,[R1,#NUM_ENQD]; ; Increment the number of elements
+	ADDS R3,R3,#1
+	STRB R3,[R1#NUM_ENQD]
 	
-	CMP R2,R4
-	BLO EndEnqUnSuccess
+	LDR R3,[R1, #IN_PTR]
+	LDR R4,[R1, #BUF_PAST]
+	CMP R3,R4 ; if IN_ptr >= buf_past 
+	BGE WrapCir
+	B EndEnqSuccess
 	
-	
-	LDR R3,[R1,#BUF_STRT] 
-	
-	STR R2,[R1,R3] ;Queue->InPointer = Queue->BufferStart;
-	
-	; Load new values
-	LDR R5,[R1,#IN_PTR]; Queue->InPointer
-	
-	LDRB R6,[R1,#NUM_ENQD]; Queue->BufferPast
-	
-	STR R2,[R1,R5]
-	STR R3,[R1,R6]
-	
-	LDR R5,[R1,#BUF_STRT]
-	
-	;clear c flag
-	MRS R7,APSR
-	MOVS R6,#0x20
-	LSLS R6,R6,#24
-	BICS R7,R7,R6
-	MSR APSR,R7
 	
 	BL EndEnqSuccess
 	
-
+WrapCir
+	LDR R2,[R1,#BUF_STRT]
+	STR R2,[R1,#IN_PTR]
+	
 
 ;return C bit cleareed if succes set C otherwise
 EndEnqUnSuccess
-	;CLRC
 	MRS R3, APSR
 	MOVS R4, #0x20
 	LSLS R4, R4, #24
 	ORRS R3, R3, R4
 	MSR APSR, R3
+	B EndSubEnq
 
 EndEnqSuccess
-	STR R2,[R1,#OUT_PTR]
+;clear c flag
+	MRS R7,APSR
+	MOVS R6,#0x20
+	LSLS R6,R6,#24
+	BICS R7,R7,R6
+	MSR APSR,R7
+EndSubEnq
 	POP{R2-R7, PC}
 	BX	LR
 	ENDP  
