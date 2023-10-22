@@ -865,43 +865,45 @@ PutNumUB PROC
 ;---------------------------------------------------------------
 ;---------------------------------------------------------------
 
+PutNumU     PROC    {R0-R14}
+            PUSH    {R0,R1,R2,LR}              ;for nested subroutine
+            MOVS    R2,#0                      ;initalize array offset
+		   
+DIV10       CMP     R0,#10                     ;check if num < 10
+            BLT     EndPutNumU
+		   
+            MOVS    R1,R0                      ;dividend in R1
+            MOVS    R0,#10                     ;divisor is 10
+            BL      DIVU                       ;divide
+		   
+            PUSH    {R0}
+            LDR     R0,=putUvar
 
-PutNumU		PROC {R0-R14}
-			
-			PUSH {R0-R7,LR}      
-            LDR R3,=putUvar ; get a variable to store the value that divu outputs
-			
-            MOVS R4,#0
-            STRB R4,[R3,R4]
-			
-                        
-DIVFirstLoop
-            MOVS R1,R0            
-            MOVS R0,#10     
-			
-            BL DIVU
-endLoop
-            STRB R1,[R3,R4]       
-            CMP R0,#0            
-            BEQ ForNum ; Skip to the for loop
-            ADDS R4,R4,#1       ; R5 will contain the ammount of characters
-            B DIVFirstLoop        
+            STRB    R1,[R0,R2]
+            ADDS    R2,R2,#1
+            POP     {R0}
+            B       DIV10                      ;keep diving by 10 until it can't
+	 	   
+EndPutNumU  ADDS    R0,R0,#'0'                 ;convert to ascii
+            BL      PutChar                    ;echo to terminal
+		    SUBS    R2,R2,#1                   ;decrement string array
 
+PrintChar   LDR     R0,=putUvar         ;array iteration
+            CMP     R2,#0
+            BLT     EndPutNum
 
-ForNum
-            CMP R4,#0        ; Check when R5 is 0
-            BEQ lastSection        
-            LDRB R0,[R3,R4]        
-            ADDS R0,R0,#'0' ;add '0' or 0x30 to show the correct ascii value
-            BL PutChar           
-            SUBS R4,R4,#1   ;reduce  R5 
-            B ForNum        
-lastSection            
-            LDRB R0,[R3,R4]
-            ADDS R0,R0,#'0'
-            BL PutChar    
-            POP {R0-R7, PC}           
+            LDRB    R1,[R0,R2]
+            MOVS    R0,R1
+
+            ADDS    R0,R0,#'0'                 ;convert to ascii
+            BL      PutChar                    ;echo to terminal
+
+            SUBS    R2,R2,#1
+            B       PrintChar
+		   
+EndPutNum   POP     {R0,R1,R2,PC}              ;for nested subroutine
             ENDP
+
 
 ;---------------------------------------------------------------
 
