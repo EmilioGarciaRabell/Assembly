@@ -289,10 +289,15 @@ handleE ;Enqueue a character to the queue, prompt to enter a character and then 
 	BL NewLine
 	BL Enqueue; enqueue the character
 	
+	BL NewLine
 	BCS UnsuccessE ; Check if C flag is set
 	
 	LDR R0,=SuccessPrompt ;Show the success message
 	BL PutStringSB
+
+	
+
+	BL StatusC
 	B Restart
 
 UnsuccessE
@@ -300,7 +305,8 @@ UnsuccessE
 	
 	LDR R0,=FailurePrompt
 	BL PutStringSB
-	
+
+	BL StatusC
 	B Restart
 	
 handleH ; Help: List the commands
