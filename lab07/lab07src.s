@@ -323,6 +323,44 @@ handleP ;Print the queued characters from the queue buffer to the terminal /
 	BL PutChar
 	BL NewLine
 	
+	 PUSH    {R0-R4}
+            MOVS    R0,#'>'
+            BL      PutChar
+         
+;---------- load parameters
+            LDR      R1,=QRecord
+            LDR      R0,=QBuffer
+            LDRB     R2,[R1,#NUM_ENQD]
+            LDR      R3,[R1,#OUT_PTR]    
+
+PrintNext   CMP      R2,#0                 ;if end of buffer,
+            BEQ      Quit                  ;then quit
+
+;---------- print queue characters
+            LDRB     R4,[R3,#0]
+            PUSH     {R0}
+            MOVS     R0,R4                 ;move char to R0 for printing
+            BL       PutChar
+            POP      {R0}
+
+            SUBS     R2,R2,#1              ;decrement queue chars left to read
+            ADDS     R3,R3,#1              ;increment OUT_PTR  
+         
+            LDR      R4,[R1,#BUF_PAST]
+            CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
+            BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
+            B        PrintNext
+
+WrapQueue   LDR      R3,[R1,#BUF_STRT]
+            B        PrintNext
+         
+Quit        MOVS     R0,#'<'               ;move delimeter to R0
+            BL       PutChar               ;print delimeter
+            BL       NewLine
+            POP      {R0-R4}
+			
+	
+	
 	B Restart
 	
 handleS ; Status: print the queue�s current InPointer, OutPointer, and NumberEnqueued
@@ -628,7 +666,7 @@ EndProgramDeq
 	POP{R2-R7, PC}
 	ENDP  
 
-
+Enqueue PROC
 ;---------------------------------------------------------------
 ;Attempts to put a character in the queue whose queue record structure�s
 ;address is in R1: if the queue is not full, enqueues the single character from R0 to the
@@ -671,7 +709,7 @@ EndProgramDeq
 
 	LDRB R3,[R1,#NUM_ENQD]; ; Increment the number of elements
 	ADDS R3,R3,#1
-	STRB R3,[R1#NUM_ENQD]
+	STRB R3,[R1,#NUM_ENQD]
 	
 	LDR R3,[R1, #IN_PTR]
 	LDR R4,[R1, #BUF_PAST]
@@ -705,7 +743,6 @@ EndEnqSuccess
 
 EndSubEnq
 	POP{R2-R7, PC}
-	BX	LR
 	ENDP  
 
 
@@ -735,7 +772,7 @@ PutNumHex PROC
   PUSH {R1-R4,LR}  ; Save registers
   
   ; Initialize ShiftAmount to 28
-  MOVS R3, #28
+  MOVS R3, #32
 
 ForHex
   CMP R3, #0      ; Check if ShiftAmount >= 0
