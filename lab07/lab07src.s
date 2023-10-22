@@ -555,7 +555,7 @@ Dequeue PROC
   ;}
   ;return (Failure);}
   
-  PUSH{R2-R14,LR}
+  PUSH{R2-R7,LR}
     ; Check if it is empty
 	LDRB R6,[R1,#NUM_ENQD] 
 	
@@ -619,7 +619,7 @@ EndDeqSuccess
 	MSR APSR,R7
 
 	STR R2,[R1,#OUT_PTR]
-	POP{R2-R14, PC}
+	POP{R2-R7, PC}
 	ENDP  
 
 
