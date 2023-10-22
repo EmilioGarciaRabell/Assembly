@@ -250,7 +250,7 @@ handleD ; Dequeue a character from the queue
 	BL PutChar
 	BL NewLine
 
-	LDR R0.=QBuffer
+	LDR R0,=QBuffer
 	LDR R1,=QRecord
 	MOVS R2,#Q_BUF_SZ
 
@@ -555,52 +555,48 @@ Dequeue PROC
   ;}
   ;return (Failure);}
   
-  PUSH{R0-R7,LR}
+  PUSH{R2-R14,LR}
     ; Check if it is empty
-	LDRB R6,[R1,#NUM_ENQD] ;
+	LDRB R6,[R1,#NUM_ENQD] 
 	
 	CMP R6,#NULL
-	BLO EndDeqUnSuccess
+	BLE EndDeqUnSuccess
 	
 	LDR R2,[R1,#OUT_PTR]; Queue->OutPointer
-	LDRB R3,[R1,#NUM_ENQD]; Queue->BufferPast
+	LDRB R3,[R2,#0]; Queue->BufferPast, place item into R0
 	
 	;*Character = *(Queue->OutPointer++);
     ;(Queue->NumberEnqueued)--;
 	
 	LDRB R0,[R2,#0]
 	
-	ADDS R2,R2,#1 ; 
+	LDRB R4,[R1,#NUM_ENQD]
 	SUBS R3, R3, #1; reduce number of elements in the queue
-	
-	
-	LDR R4, [R1, #BUF_PAST]
-	
-	CMP R2,R4
+	STRB R3,[R1,#NUM_ENQD]
+	ADDS R2,R2,#1 ; 
+
+	LDR R3,[R1,#BUF_PAST]
+	CMP R3,R2	;compare out pointer and buffer past
 	BLO EndDeqUnSuccess
 	
 	
 	LDR R3,[R1,#BUF_STRT] 
-	STR R2,[R1,R3] ;Queue->OutPointer = Queue->BufferStart; 
+	STR R3,[R1,#OUT_PTR] ;Queue->OutPointer = Queue->BufferStart; 
 	
+	STR R2,[R1,#OUT_PTR]
+
+
 	; Load new values
-	LDR R5,[R1,#OUT_PTR]; Queue->OutPointer
+	;LDR R5,[R1,#OUT_PTR]; Queue->OutPointer
 	
-	LDRB R6,[R1,#NUM_ENQD]; Queue->BufferPast
+;	LDRB R6,[R1,#NUM_ENQD]; Queue->BufferPast
 	
-	STR R2,[R1,R5] ; Update R1
-	STR R3,[R1,R6]
+;	STR R2,[R1,R5] ; Update R1
+;	STR R3,[R1,R6]
 	
-	LDR R5,[R1,#BUF_STRT]
-	
+;	LDR R5,[R1,#BUF_STRT]
 	
 
-	;clear c flag
-	MRS R7,APSR
-	MOVS R6,#0x20
-	LSLS R6,R6,#24
-	BICS R7,R7,R6
-	MSR APSR,R7
 
 	BL EndDeqSuccess
 
@@ -613,7 +609,15 @@ EndDeqUnSuccess
 	ORRS R3, R3, R4
 	MSR APSR, R3
 
+
 EndDeqSuccess
+		;clear c flag
+	MRS R7,APSR
+	MOVS R6,#0x20
+	LSLS R6,R6,#24
+	BICS R7,R7,R6
+	MSR APSR,R7
+
 	STR R2,[R1,#OUT_PTR]
 	POP{R0-R7, PC}
 	ENDP  
