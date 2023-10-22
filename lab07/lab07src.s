@@ -250,7 +250,7 @@ handleD ; Dequeue a character from the queue
 	BL PutChar
 	BL NewLine
 
-	LDR R0.=QBuffer
+	LDR R0,=QBuffer
 	LDR R1,=QRecord
 	MOVS R2,#Q_BUF_SZ
 
