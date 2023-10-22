@@ -847,8 +847,7 @@ lastSection
             LDRB R0,[R3,R4]
             ADDS R0,R0,#'0'
             BL PutChar    
-            POP {R0-R7}           
-            BX LR
+            POP {R0-R7, PC}           
             ENDP
 
 ;---------------------------------------------------------------
