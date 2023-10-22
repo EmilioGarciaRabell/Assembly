@@ -286,17 +286,18 @@ handleE ;Enqueue a character to the queue, prompt to enter a character and then 
 	
 	LDR R0,=QBuffer
 	LDR R1,=QRecord
-	BL NewLine
+
 	BL GetChar; get the character 
-	
+	BL PutChar
+	BL NewLine
 	
 	BL Enqueue; enqueue the character
-	BL NewLine
 	BCS UnsuccessE ; Check if C flag is set
 	
 	LDR R0,=SuccessPrompt ;Show the success message
 	BL PutStringSB
 
+	LDR R0,=QRecord
 	BL StatusC
 	B Restart
 
