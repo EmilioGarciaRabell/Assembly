@@ -2,7 +2,7 @@
 ;****************************************************************
 ;Descriptive comment header goes here.
 ; Polled Serial I/O
-;Name:  Emilio Garcia Rabell webos
+;Name:  Emilio Garcia Rabell webos xd
 ;Date:  -/-/-
 ;Class:  CMPE-250
 ;Section:  1
