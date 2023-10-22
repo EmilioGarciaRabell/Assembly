@@ -787,11 +787,12 @@ ForHex
   LSRS R2, R2, R3  ; Shift right by 4 bits
   ANDS R2, R2, R4  ; Mask out upper bits
 
-  CMP R2,#4
+  CMP R2,#10
   BGE     ConvertToAF                ;if ASCII value >= 10,
   ADDS    R2,#'0'                    ;else, add 0 to ASCII
   B       PrintX
-
+  CMP R3, #0      ; Check if ShiftAmount >= 0
+  BLT EndForHex   ; If not, exit loop
 
 ConvertToAF
   ADDS    R2,R2,#55 ;Convert to uppercase
@@ -850,7 +851,9 @@ PutNumUB PROC
   ;/* print text digits of number */
   ;PutStringSB (StringPtr, (MAX_WORD_DECIMAL_DIGITS + 1));
 ;} /* PutNumU */
-	PUSH {R0-R5}
+	PUSH {R0-R5, LR}
+
+	LDR R0,[R0,#0]
 	MOVS R4,#0xFF
 	ANDS R0,R0,R4
 	MOVS R3,R5
