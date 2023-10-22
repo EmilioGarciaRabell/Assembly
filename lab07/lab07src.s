@@ -619,7 +619,7 @@ EndDeqSuccess
 	MSR APSR,R7
 
 	STR R2,[R1,#OUT_PTR]
-	POP{R0-R7, PC}
+	POP{R2-R14, PC}
 	ENDP  
 
 
