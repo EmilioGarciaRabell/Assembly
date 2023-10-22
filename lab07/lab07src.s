@@ -284,19 +284,20 @@ handleE ;Enqueue a character to the queue, prompt to enter a character and then 
 	LDR R0,=EnqueuePrompt
 	BL PutStringSB ; prompt for a character 
 	
+	LDR R0,=QBuffer
+	LDR R1,=QRecord
+
 	BL GetChar; get the character 
-	
+	BL PutChar
 	BL NewLine
+	
 	BL Enqueue; enqueue the character
-	
-	BL NewLine
 	BCS UnsuccessE ; Check if C flag is set
 	
 	LDR R0,=SuccessPrompt ;Show the success message
 	BL PutStringSB
 
-	
-
+	LDR R0,=QRecord
 	BL StatusC
 	B Restart
 
@@ -420,7 +421,6 @@ StatusC PROC
 ; print queue length
 	MOVS    R0,R3
 	BL      PutNumU
-	
 
 	POP     {R0-R3,PC}
 	ENDP
