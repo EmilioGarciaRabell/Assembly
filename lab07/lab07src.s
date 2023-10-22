@@ -2,7 +2,7 @@
 ;****************************************************************
 ;Descriptive comment header goes here.
 ; Polled Serial I/O
-;Name:  Emilio Garcia Rabell
+;Name:  Emilio Garcia Rabell webos
 ;Date:  -/-/-
 ;Class:  CMPE-250
 ;Section:  1
@@ -307,7 +307,7 @@ handleP ;Print the queued characters from the queue buffer to the terminal /
 	
 	B Restart
 	
-handleS ; Status: print the queue’s current InPointer, OutPointer, and NumberEnqueued
+handleS ; Status: print the queueï¿½s current InPointer, OutPointer, and NumberEnqueued
 	BL PutChar
 	BL NewLine
 	
@@ -491,8 +491,8 @@ endL
 
 ;---------------------------------------------------------------
 ;Use the queue
-;management record structure in the class notes—including the field order and field offset
-;names—so that the subroutines will work with any compatible circular FIFO queue. e
+;management record structure in the class notesï¿½including the field order and field offset
+;namesï¿½so that the subroutines will work with any compatible circular FIFO queue. e
 ;subroutines must not use any temporary variables; the stack is the only area of memory
 ;that may be accessed other than the queue. Additionally, you must write the subroutines
 ;so that the no registers other than PSR and any output parameter(s) have changed values
@@ -519,7 +519,7 @@ InitQueue
 
 
 ;---------------------------------------------------------------
-;Attempts to get a character from the queue whose record structure’s
+;Attempts to get a character from the queue whose record structureï¿½s
 ;address is in R1: if the queue is not empty, dequeues a single character from the queue
 ;to R0, and returns with the PSR C bit cleared, (i.e., 0), to report dequeue success;
 ;otherwise, returns with the PSR C bit set, (i.e., 1), to report dequeue failure.
@@ -608,7 +608,7 @@ EndDeqSuccess
 
 
 ;---------------------------------------------------------------
-;Attempts to put a character in the queue whose queue record structure’s
+;Attempts to put a character in the queue whose queue record structureï¿½s
 ;address is in R1: if the queue is not full, enqueues the single character from R0 to the
 ;queue, and returns with the PSR C bit cleared to report enqueue success; otherwise,
 ;returns with the PSR C bit set to report enqueue failure.
@@ -702,7 +702,7 @@ EndEnqSuccess
 ;Prints to the terminal screen the text hexadecimal representation of the
 ;unsigned word value in R0. (For example, if R0 contains 0x000012FF, then 000012FF
 ;should print on the terminal. Note: 12FF would not be acceptable. Do not use division
-;to determine the hexadecimal digit values—use bit masks and shifts.)
+;to determine the hexadecimal digit valuesï¿½use bit masks and shifts.)
 ;---------------------------------------------------------------
 PutNumHex PROC
 ;void PutNumHex (uint32_t Number) {
