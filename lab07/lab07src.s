@@ -660,6 +660,7 @@ Enqueue PROC
 	;if (Queue->InPointer >= Queue->BufferPast) {
 	LDR R2,[R1,#IN_PTR]; Queue->InPointer
 	STRB R0,[R2,#0] l; store address to enqueue 
+
 	ADDS R2,R2,#1 ; increment IN_PTR
 	STR R2,[R1,#IN_PTR]
 
@@ -674,11 +675,10 @@ Enqueue PROC
 	B EndEnqSuccess
 	
 	
-	BL EndEnqSuccess
-	
 WrapCir
 	LDR R2,[R1,#BUF_STRT]
 	STR R2,[R1,#IN_PTR]
+	B EndEnqSuccess
 	
 
 ;return C bit cleareed if succes set C otherwise
