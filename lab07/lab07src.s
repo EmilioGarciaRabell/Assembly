@@ -249,19 +249,31 @@ HandleConditions ; Verify which letter was entered
 handleD ; Dequeue a character from the queue
 	BL PutChar
 	BL NewLine
-	BL Dequeue ; call the method
+
+	LDR R0.=QBuffer
+	LDR R1,=QRecord
+	MOVS R2,#Q_BUF_SZ
+
+	BL Dequeue ; call the method to remove from queue
+
 	; verify if the event was successful
 	BCS UnsuccessD
 	
 	LDR R0,=SuccessPrompt ;Show the success message
 	BL PutStringSB
-	B Restart
+
+	LDR R0,=QRecord ; load queue record
+	BL StatusC ; show the status
+
+	B Restart ; prompt for another command
 
 UnsuccessD
-	BL PutChar
-
+	BL PutChar 
 	LDR R0,=FailurePrompt
 	BL PutStringSB
+
+	LDR R0,=QRecord
+	BL StatusC
 	
 	B Restart
 
@@ -812,6 +824,8 @@ PutNumUB PROC
 	ENDP
 
 ;---------------------------------------------------------------
+;---------------------------------------------------------------
+
 
 PutNumU		PROC {R0-R14}
 			
