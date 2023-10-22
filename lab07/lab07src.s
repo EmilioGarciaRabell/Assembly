@@ -629,7 +629,6 @@ EndProgramDeq
 ;queue, and returns with the PSR C bit cleared to report enqueue success; otherwise,
 ;returns with the PSR C bit set to report enqueue failure.
 ;---------------------------------------------------------------
-Enqueue PROC
 ;/***************************************************************/
 ;/* Enqueues Character to queue if queue is not full.           */
 ;/* Returns:  1 if failure; 0 otherwise                         */
@@ -650,58 +649,58 @@ Enqueue PROC
  
   PUSH{R2-R7,LR}
 
-	            LDRB    R3,[R1,#NUM_ENQD]          ;load enqueued num          
-            LDRB    R4,[R1,#BUF_SIZE]          ;load buffer size
-            CMP     R3,R4                      ;compare enqueued num with size
-            BGE     EnqueueFailed              ;if NUM_ENQD >= BUF_SIZE, queue is full
-            
-            LDR     R3,[R1,#IN_PTR]            ;load mem address of in_ptr
-            STRB    R0,[R3,#0]                 ;store the item to be enqueued in mem address
+	; Check if it is full
+	LDRB R3,[R1,#NUM_ENQD] ; number enqued
+	LDR R4,[R1,#BUF_SIZE] ; Bufer size
+	
+	CMP R3,R4
+	BGE EndEnqUnSuccess ; if  NUM_ENQD >= BUF_SIZE the queue is full
 
-;---------- increment IN_PTR
-            ADDS    R3,R3,#1
-            STR     R3,[R1,#IN_PTR]
-            
-;---------- increment enqueued elements number
-            LDRB    R3,[R1,#NUM_ENQD]
-            ADDS    R3,R3,#1
-            STRB    R3,[R1,#NUM_ENQD]
-            
-;---------- if IN_PTR >= BUF_PAST, wrap around buffer
-            LDR     R3,[R1,#IN_PTR]
-            LDR     R4,[R1,#BUF_PAST]
-            CMP     R3,R4
-            BGE     EnqueueWrapBuffer
-			B       EnqueueSuccess
+	;if (Queue->InPointer >= Queue->BufferPast) {
+	LDR R2,[R1,#IN_PTR]; Queue->InPointer
+	STRB R0,[R2,#0] ; store address to enqueue 
 
-;---------- wrap around the circular queue
-EnqueueWrapBuffer
-            LDR     R2,[R1,#BUF_STRT]
-            STR     R2,[R1,#IN_PTR]            ;store IN_PTR to the front of queue
-			B       EnqueueSuccess
-			
-;---------- clear C flag because it successfully enqueued
-EnqueueSuccess
-			MRS R7,APSR
-			MOVS R6,#0x20
-			LSLS R6,R6,#24
-			BICS R7,R7,R6
-			MSR APSR,R7
-            B       EnqueueEnd
+	ADDS R2,R2,#1 ; increment IN_PTR
+	STR R2,[R1,#IN_PTR]
 
-;---------- set C flag because it failed to enqueue
-EnqueueFailed
-          	MRS R3, APSR
-			MOVS R4, #0x20
-			LSLS R4, R4, #24
-			ORRS R3, R3, R4
-			MSR APSR, R3
-            B       EnqueueEnd
-			
-;---------- end Enqueue subroutine
-EnqueueEnd  POP     {R2-R4}
-            BX      LR
-            ENDP
+	LDRB R3,[R1,#NUM_ENQD]; ; Increment the number of elements
+	ADDS R3,R3,#1
+	STRB R3,[R1#NUM_ENQD]
+	
+	LDR R3,[R1, #IN_PTR]
+	LDR R4,[R1, #BUF_PAST]
+	CMP R3,R4 ; if IN_ptr >= buf_past 
+	BGE WrapCir
+	B EndEnqSuccess
+	
+	
+WrapCir
+	LDR R2,[R1,#BUF_STRT]
+	STR R2,[R1,#IN_PTR]
+	B EndEnqSuccess
+	
+
+;return C bit cleareed if succes set C otherwise
+EndEnqUnSuccess
+	MRS R3, APSR
+	MOVS R4, #0x20
+	LSLS R4, R4, #24
+	ORRS R3, R3, R4
+	MSR APSR, R3
+	B EndSubEnq
+
+EndEnqSuccess
+;clear c flag
+	MRS R7,APSR
+	MOVS R6,#0x20
+	LSLS R6,R6,#24
+	BICS R7,R7,R6
+	MSR APSR,R7
+
+EndSubEnq
+	POP{R2-R7, PC}
+	BX	LR
+	ENDP  
 
 
 
