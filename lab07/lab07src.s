@@ -391,33 +391,33 @@ StatusC PROC
 	LDR     R2,[R0,#OUT_PTR]
 	LDRB    R3,[R0,#NUM_ENQD]
 
-;---------- print "   In="
+; Print "   In=" 
 	LDR     R0,=Spaces
 	BL      PutStringSB
 	LDR     R0,=PrintInHex
 	BL      PutStringSB
 
-;---------- print IN_PTR address of queue
+; print IN_PTR address of queue
 	MOVS    R0,R1
 	BL      PutNumHex
 
-;---------- print "   Out="
+; print "   Out="
 	LDR     R0,=Spaces
 	BL      PutStringSB
 	LDR     R0,=PrintOutHex
 	BL      PutStringSB
 
-;---------- print OUT_PTR address of queue
+; print OUT_PTR address of queue
 	MOVS    R0, R2
 	BL      PutNumHex
 
-;---------- print "   Num="
+;print "   Num="
 	LDR     R0,=Spaces
 	BL      PutStringSB
 	LDR     R0,=PrintNum
 	BL      PutStringSB
 
-;---------- print queue length
+; print queue length
 	MOVS    R0,R3
 	BL      PutNumU
 	
@@ -851,16 +851,15 @@ PutNumUB PROC
   ;/* print text digits of number */
   ;PutStringSB (StringPtr, (MAX_WORD_DECIMAL_DIGITS + 1));
 ;} /* PutNumU */
-	PUSH {R0-R5, LR}
+	PUSH {R0}
 
 	LDR R0,[R0,#0]
 	MOVS R4,#0xFF
 	ANDS R0,R0,R4
-	MOVS R3,R5
 	BL PutNumU
 	
 	
-	POP {R0-R5,PC}
+	POP {R0}
 	ENDP
 
 ;---------------------------------------------------------------
