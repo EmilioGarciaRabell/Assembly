@@ -599,7 +599,7 @@ Dequeue PROC
   ;}
   ;return (Failure);}
   
-  PUSH{R2-R7,LR}
+  PUSH{R1-R7,LR}
     ; Check if it is empty
 	LDRB R6,[R1,#NUM_ENQD] 
 	
@@ -617,32 +617,20 @@ Dequeue PROC
 	LDRB R4,[R1,#NUM_ENQD]
 	SUBS R3, R3, #1; reduce number of elements in the queue
 	STRB R3,[R1,#NUM_ENQD]
+
 	ADDS R2,R2,#1 ; 
 
 	LDR R3,[R1,#BUF_PAST]
 	CMP R3,R2	;compare out pointer and buffer past
-	BLO EndDeqUnSuccess
-	
-	
-	LDR R3,[R1,#BUF_STRT] 
-	STR R3,[R1,#OUT_PTR] ;Queue->OutPointer = Queue->BufferStart; 
+	BEQ DeqWrap
 	
 	STR R2,[R1,#OUT_PTR]
 
+	B EndDeqSuccess
 
-	; Load new values
-	;LDR R5,[R1,#OUT_PTR]; Queue->OutPointer
-	
-;	LDRB R6,[R1,#NUM_ENQD]; Queue->BufferPast
-	
-;	STR R2,[R1,R5] ; Update R1
-;	STR R3,[R1,R6]
-	
-;	LDR R5,[R1,#BUF_STRT]
-	
-
-
-	BL EndDeqSuccess
+DeqWrap
+	LDR R3,[R1,#BUF_STRT] 
+	STR R3,[R1,#OUT_PTR] ;Queue->OutPointer = Queue->BufferStart; 
 
 ;return C bit cleareed if succes set C otherwise
 EndDeqUnSuccess
@@ -663,7 +651,7 @@ EndDeqSuccess
 	MSR APSR,R7
 EndProgramDeq
 	STR R2,[R1,#OUT_PTR]
-	POP{R2-R7, PC}
+	POP{R1-R7, PC}
 	ENDP  
 
 Enqueue PROC
