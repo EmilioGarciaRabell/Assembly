@@ -307,6 +307,7 @@ UnsuccessE
 	LDR R0,=FailurePrompt
 	BL PutStringSB
 
+	LDR R0,=QRecord
 	BL StatusC
 	B Restart
 	
@@ -580,7 +581,7 @@ InitQueue
 ;to R0, and returns with the PSR C bit cleared, (i.e., 0), to report dequeue success;
 ;otherwise, returns with the PSR C bit set, (i.e., 1), to report dequeue failure.
 ;---------------------------------------------------------------
-Dequeue PROC
+
 	
 ;int Dequeue (char *Character, qRecord *Queue) {
 ;/***************************************************************/
@@ -598,7 +599,7 @@ Dequeue PROC
     ;Failure = FALSE;
   ;}
   ;return (Failure);}
-  
+Dequeue PROC
   PUSH{R2-R7,LR}
     ; Check if it is empty
 	LDRB R6,[R1,#NUM_ENQD] 
