@@ -320,50 +320,44 @@ handleH ; Help: List the commands
 	
 	B Restart
 	
-handleP ;Print the queued characters from the queue buffer to the terminal /
-		;screen, in order from first in to last in.
-	BL PutChar
-	BL NewLine
-	
-	PUSH    {R0-R4}
-	MOVS    R0,#'>'
-	BL      PutChar
-	
+handleP   BL      NewLine
+            PUSH    {R0-R4}
+            MOVS    R0,#'>'
+            BL      PutChar
+         
 ;---------- load parameters
-	LDR      R1,=QRecord
-	LDR      R0,=QBuffer
-	LDRB     R2,[R1,#NUM_ENQD]
-	LDR      R3,[R1,#OUT_PTR]    
+            LDR      R1,=QRecord
+            LDR      R0,=QBuffer
+            LDRB     R2,[R1,#NUM_ENQD]
+            LDR      R3,[R1,#OUT_PTR]    
 
 PrintNext   CMP      R2,#0                 ;if end of buffer,
-	BEQ      Quit                  ;then quit
+            BEQ      Quit                  ;then quit
 
 ;---------- print queue characters
-	LDRB     R4,[R3,#0]
-	PUSH     {R0}
-	MOVS     R0,R4                 ;move char to R0 for printing
-	BL       PutChar
-	POP      {R0}
+            LDRB     R4,[R3,#0]
+            PUSH     {R0}
+            MOVS     R0,R4                 ;move char to R0 for printing
+            BL       PutChar
+            POP      {R0}
 
-	SUBS     R2,R2,#1              ;decrement queue chars left to read
-	ADDS     R3,R3,#1              ;increment OUT_PTR  
-	
-	LDR      R4,[R1,#BUF_PAST]
-	CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
-	BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
-	B        PrintNext
+            SUBS     R2,R2,#1              ;decrement queue chars left to read
+            ADDS     R3,R3,#1              ;increment OUT_PTR  
+         
+            LDR      R4,[R1,#BUF_PAST]
+            CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
+            BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
+            B        PrintNext
 
-WrapQueue   
-	LDR      R3,[R1,#BUF_STRT]
-	B        PrintNext
+WrapQueue   LDR      R3,[R1,#BUF_STRT]
+            B        PrintNext
+         
+Quit        MOVS     R0,#'<'               ;move delimeter to R0
+            BL       PutChar               ;print delimeter
+            BL       NewLine            ;go to next line
+            POP      {R0-R4}
+            B        Restart
 	
-Quit        
-	MOVS     R0,#'<'               ;move delimeter to R0
-	BL       PutChar               ;print delimeter
-	BL       NewLine
-	POP      {R0-R4}
-			
-	B Restart
 	
 handleS ; Status: print the queue�s current InPointer, OutPointer, and NumberEnqueued
 	BL PutChar
@@ -679,7 +673,7 @@ EndProgramDeq
     ;Failure = FALSE;
   ;}
   ;return (Failure);}
- 
+Enqueue PROC
   PUSH{R2-R7,LR}
 
 	; Check if it is full
@@ -1034,7 +1028,7 @@ Init_UART0_Polling		PROC     {R3-R15} 			; initialize UART0 polling
 ;---------------------------------------------------------------
 ;---------------------------------------------------------------
 
-NewLine		PROC 	{R0, R14}
+NewLine		PROC 	{R0-R14}
 			PUSH 	{R0-R7, LR} 
 			
 			MOVS 	R0,#CR
