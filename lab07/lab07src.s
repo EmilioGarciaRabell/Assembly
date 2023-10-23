@@ -2,7 +2,7 @@
 ;****************************************************************
 ;Descriptive comment header goes here.
 ; Polled Serial I/O
-;Name:  Emilio Garcia Rabell webos xd
+;Name:  Emilio Garcia Rabell 
 ;Date:  -/-/-
 ;Class:  CMPE-250
 ;Section:  1
@@ -188,7 +188,7 @@ MAX_STRING 				EQU 79
             ENTRY
             EXPORT  Reset_Handler
             IMPORT  Startup
-			EXPORT PutChar
+			;EXPORT PutChar
 	
 			
 Reset_Handler  PROC  {}
@@ -202,52 +202,47 @@ main
 ;>>>>> begin main program code <<<<<
 
 
-			BL Init_UART0_Polling  ; Initialize program
-			;LDR R0, =string
-			;MOVS R1, #MAX_STRING 	
-			
-		
-			BL InitQueue ; Initialize the queue
+	BL Init_UART0_Polling  ; Initialize program
+	BL InitQueue ; Initialize the queue
 
 Restart
-			BL NewLine
-			LDR 	R0,=PutPrompt
-			BL		PutStringSB
+	BL NewLine
+	LDR 	R0,=PutPrompt
+	BL		PutStringSB
 
 IgnoreChar
 
-			BL GetChar ; get a queue command
-
+	BL GetChar ; get a queue command
+	BL PutChar
 interpretChar
 
 
-			;  dynamic input
+	;  dynamic input
 
-			CMP R0, #96 ;Compare r0 to 97
-			BHI HandleConditions ; if the number is higher than 96, then the value is lower case
+	CMP R0, #96 ;Compare r0 to 97
+	BHI HandleConditions ; if the number is higher than 96, then the value is lower case
 
-			ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
+	ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
 
 HandleConditions ; Verify which letter was entered
-			CMP R0, #'d'
-			BEQ handleD
-			
-			CMP R0, #'e'
-			BEQ handleE
-			
-			CMP R0, #'h'
-			BEQ handleH
-			
-			CMP R0, #'p'
-			BEQ handleP
-			
-			CMP R0, #'s'
-			BEQ handleS
-			
-			B IgnoreChar ; this executes whenever an invalid character is inputted
+	CMP R0, #'d'
+	BEQ handleD
+	
+	CMP R0, #'e'
+	BEQ handleE
+	
+	CMP R0, #'h'
+	BEQ handleH
+	
+	CMP R0, #'p'
+	BEQ handleP
+	
+	CMP R0, #'s'
+	BEQ handleS
+	
+	B IgnoreChar ; this executes whenever an invalid character is inputted
 
 handleD ; Dequeue a character from the queue
-	BL PutChar
 	BL NewLine
 
 	LDR R0,=QBuffer
@@ -278,7 +273,6 @@ UnsuccessD
 	B Restart
 
 handleE ;Enqueue a character to the queue, prompt to enter a character and then enqueue it
-	BL PutChar
 	BL NewLine
 	
 	LDR R0,=EnqueuePrompt
@@ -286,6 +280,7 @@ handleE ;Enqueue a character to the queue, prompt to enter a character and then 
 	
 	LDR R0,=QBuffer
 	LDR R1,=QRecord
+	MOVS R2,=Q_BUF_SZ
 
 	BL GetChar; get the character 
 	BL PutChar
