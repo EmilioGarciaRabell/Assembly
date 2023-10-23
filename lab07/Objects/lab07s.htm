@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\Objects\lab07s.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Objects\lab07s.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Sun Oct 22 21:45:14 2023
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Sun Oct 22 22:01:06 2023
 <BR><P>
 <H3>Maximum Stack Usage =          0 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -11,7 +11,7 @@ Call chain for Maximum Stack Depth:</H3>
 <P>
 <H3>
 Mutually Recursive functions
-</H3> <LI><a href="#[5]">GetChar</a>&nbsp;&nbsp;&nbsp;&rArr;&nbsp;&nbsp;&nbsp;<a href="#[5]">GetChar</a><BR>
+</H3> <LI><a href="#[6]">GetChar</a>&nbsp;&nbsp;&nbsp;&rArr;&nbsp;&nbsp;&nbsp;<a href="#[6]">GetChar</a><BR>
  <LI><a href="#[1]">Dummy_Handler</a>&nbsp;&nbsp;&nbsp;&rArr;&nbsp;&nbsp;&nbsp;<a href="#[1]">Dummy_Handler</a><BR>
 </UL>
 <P>
@@ -43,90 +43,90 @@ Global Symbols
 <P><STRONG><a name="[2]"></a>HardFault_Handler</STRONG> (Thumb, 0 bytes, Stack size 0 bytes, start.o(Start))
 <BR>[Address Reference Count : 1]<UL><LI> lab07src.o(RESET)
 </UL>
-<P><STRONG><a name="[3]"></a>Reset_Handler</STRONG> (Thumb, 286 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<P><STRONG><a name="[3]"></a>Reset_Handler</STRONG> (Thumb, 284 bytes, Stack size 0 bytes, lab07src.o(MyCode))
 <BR><BR>[Calls]<UL><LI><a href="#[f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Startup
-<LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
-<LI><a href="#[d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
-<LI><a href="#[c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_UART0_Polling
-<LI><a href="#[8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Enqueue
-<LI><a href="#[7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Dequeue
-<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
-<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+<LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
+<LI><a href="#[d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_UART0_Polling
+<LI><a href="#[9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Enqueue
+<LI><a href="#[8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Dequeue
+<LI><a href="#[7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
+<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
 <LI><a href="#[4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;StatusC
-</UL>
-
-<P><STRONG><a name="[e]"></a>PutChar</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
-<LI><a href="#[d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
-<LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
-<LI><a href="#[9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
-<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
-<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
 </UL>
 <P>
 <H3>
 Local Symbols
 </H3>
 <P><STRONG><a name="[4]"></a>StatusC</STRONG> (Thumb, 64 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
-<LI><a href="#[9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
-<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
+<BR><BR>[Calls]<UL><LI><a href="#[b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
+<LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
+<LI><a href="#[7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
 </UL>
 <BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
 </UL>
 
-<P><STRONG><a name="[5]"></a>GetChar</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
-<LI><a href="#[d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
-<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
-</UL>
-<BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
-<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+<P><STRONG><a name="[5]"></a>PutChar</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
+<LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
+<LI><a href="#[b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
+<LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
+<LI><a href="#[7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutStringSB
+<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
 </UL>
 
-<P><STRONG><a name="[6]"></a>PutStringSB</STRONG> (Thumb, 26 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
+<P><STRONG><a name="[6]"></a>GetChar</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;NewLine
+<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
+</UL>
+<BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
+<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+</UL>
+
+<P><STRONG><a name="[7]"></a>PutStringSB</STRONG> (Thumb, 26 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Calls]<UL><LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
 </UL>
 <BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
 <LI><a href="#[4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;StatusC
 </UL>
 
-<P><STRONG><a name="[7]"></a>Dequeue</STRONG> (Thumb, 70 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<P><STRONG><a name="[8]"></a>Dequeue</STRONG> (Thumb, 70 bytes, Stack size 0 bytes, lab07src.o(MyCode))
 <BR><BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
 </UL>
 
-<P><STRONG><a name="[8]"></a>Enqueue</STRONG> (Thumb, 72 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<P><STRONG><a name="[9]"></a>Enqueue</STRONG> (Thumb, 72 bytes, Stack size 0 bytes, lab07src.o(MyCode))
 <BR><BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
 </UL>
 
-<P><STRONG><a name="[9]"></a>PutNumHex</STRONG> (Thumb, 48 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
-<LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
+<P><STRONG><a name="[a]"></a>PutNumHex</STRONG> (Thumb, 48 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Calls]<UL><LI><a href="#[b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
+<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
 </UL>
 <BR>[Called By]<UL><LI><a href="#[4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;StatusC
 </UL>
 
-<P><STRONG><a name="[a]"></a>PutNumU</STRONG> (Thumb, 58 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
-<LI><a href="#[b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DIVU
+<P><STRONG><a name="[b]"></a>PutNumU</STRONG> (Thumb, 58 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Calls]<UL><LI><a href="#[c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DIVU
+<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
 </UL>
-<BR>[Called By]<UL><LI><a href="#[9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
+<BR>[Called By]<UL><LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumHex
 <LI><a href="#[4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;StatusC
 </UL>
 
-<P><STRONG><a name="[b]"></a>DIVU</STRONG> (Thumb, 54 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Called By]<UL><LI><a href="#[a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
+<P><STRONG><a name="[c]"></a>DIVU</STRONG> (Thumb, 54 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Called By]<UL><LI><a href="#[b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutNumU
 </UL>
 
-<P><STRONG><a name="[c]"></a>Init_UART0_Polling</STRONG> (Thumb, 108 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<P><STRONG><a name="[d]"></a>Init_UART0_Polling</STRONG> (Thumb, 108 bytes, Stack size 0 bytes, lab07src.o(MyCode))
 <BR><BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
 </UL>
 
-<P><STRONG><a name="[d]"></a>NewLine</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
-<BR><BR>[Calls]<UL><LI><a href="#[e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
+<P><STRONG><a name="[e]"></a>NewLine</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lab07src.o(MyCode))
+<BR><BR>[Calls]<UL><LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PutChar
 </UL>
 <BR>[Called By]<UL><LI><a href="#[3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
-<LI><a href="#[5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
+<LI><a href="#[6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetChar
 </UL>
 
 <P><STRONG><a name="[10]"></a>SystemInit</STRONG> (Thumb, 54 bytes, Stack size 0 bytes, start.o(Start))

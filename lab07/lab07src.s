@@ -280,7 +280,7 @@ handleE ;Enqueue a character to the queue, prompt to enter a character and then 
 	
 	LDR R0,=QBuffer
 	LDR R1,=QRecord
-	MOVS R2,=Q_BUF_SZ
+	MOVS R2,#Q_BUF_SZ
 
 	BL GetChar; get the character 
 	BL PutChar
