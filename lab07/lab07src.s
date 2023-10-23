@@ -353,16 +353,16 @@ PrintNext   CMP      R2,#0                 ;if end of buffer,
 	BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
 	B        PrintNext
 
-WrapQueue   LDR      R3,[R1,#BUF_STRT]
+WrapQueue   
+	LDR      R3,[R1,#BUF_STRT]
 	B        PrintNext
 	
-Quit        MOVS     R0,#'<'               ;move delimeter to R0
+Quit        
+	MOVS     R0,#'<'               ;move delimeter to R0
 	BL       PutChar               ;print delimeter
 	BL       NewLine
 	POP      {R0-R4}
 			
-	
-	
 	B Restart
 	
 handleS ; Status: print the queue�s current InPointer, OutPointer, and NumberEnqueued
