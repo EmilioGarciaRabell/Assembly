@@ -616,8 +616,8 @@ Dequeue PROC
 	LDRB R0,[R2,#0]
 	
 	LDRB R4,[R1,#NUM_ENQD]
-	SUBS R3, R3, #1; reduce number of elements in the queue
-	STRB R3,[R1,#NUM_ENQD]
+	SUBS R6, R6, #1; reduce number of elements in the queue
+	STRB R6,[R1,#NUM_ENQD]
 
 	ADDS R2,R2,#1 ; 
 
