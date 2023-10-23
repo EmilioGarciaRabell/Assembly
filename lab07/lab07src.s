@@ -302,7 +302,7 @@ UnsuccessE
 	LDR R0,=FailurePrompt
 	BL PutStringSB
 
-	LDR R0,=QRecord
+	LDR R0,#QRecord
 	BL StatusC
 	B Restart
 	
@@ -550,7 +550,8 @@ endL
 ;Initializes the queue record structure at the address in R1 for the empty
 ;queue buffer at the address in R0 of size given in R2, (i.e., character capacity).
 ;---------------------------------------------------------------
-InitQueue
+InitQueue PROC
+	PUSH {R0-R2}
 	LDR R0, =QBuffer
 	LDR R1, =QRecord
 	STR R0, [R1, #IN_PTR]
@@ -563,6 +564,9 @@ InitQueue
 	MOVS R0, #0
 	STRB R0, [R1, #NUM_ENQD]
 
+	POP {R0-R2}
+	BX LR
+	ENDP
 
 ;---------------------------------------------------------------
 ;Attempts to get a character from the queue whose record structure�s
