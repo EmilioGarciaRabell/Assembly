@@ -324,41 +324,41 @@ handleP ;Print the queued characters from the queue buffer to the terminal /
 	BL PutChar
 	BL NewLine
 	
-	 PUSH    {R0-R4}
-            MOVS    R0,#'>'
-            BL      PutChar
-         
+	PUSH    {R0-R4}
+	MOVS    R0,#'>'
+	BL      PutChar
+	
 ;---------- load parameters
-            LDR      R1,=QRecord
-            LDR      R0,=QBuffer
-            LDRB     R2,[R1,#NUM_ENQD]
-            LDR      R3,[R1,#OUT_PTR]    
+	LDR      R1,=QRecord
+	LDR      R0,=QBuffer
+	LDRB     R2,[R1,#NUM_ENQD]
+	LDR      R3,[R1,#OUT_PTR]    
 
 PrintNext   CMP      R2,#0                 ;if end of buffer,
-            BEQ      Quit                  ;then quit
+	BEQ      Quit                  ;then quit
 
 ;---------- print queue characters
-            LDRB     R4,[R3,#0]
-            PUSH     {R0}
-            MOVS     R0,R4                 ;move char to R0 for printing
-            BL       PutChar
-            POP      {R0}
+	LDRB     R4,[R3,#0]
+	PUSH     {R0}
+	MOVS     R0,R4                 ;move char to R0 for printing
+	BL       PutChar
+	POP      {R0}
 
-            SUBS     R2,R2,#1              ;decrement queue chars left to read
-            ADDS     R3,R3,#1              ;increment OUT_PTR  
-         
-            LDR      R4,[R1,#BUF_PAST]
-            CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
-            BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
-            B        PrintNext
+	SUBS     R2,R2,#1              ;decrement queue chars left to read
+	ADDS     R3,R3,#1              ;increment OUT_PTR  
+	
+	LDR      R4,[R1,#BUF_PAST]
+	CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
+	BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
+	B        PrintNext
 
 WrapQueue   LDR      R3,[R1,#BUF_STRT]
-            B        PrintNext
-         
+	B        PrintNext
+	
 Quit        MOVS     R0,#'<'               ;move delimeter to R0
-            BL       PutChar               ;print delimeter
-            BL       NewLine
-            POP      {R0-R4}
+	BL       PutChar               ;print delimeter
+	BL       NewLine
+	POP      {R0-R4}
 			
 	
 	
@@ -599,7 +599,7 @@ Dequeue PROC
   ;}
   ;return (Failure);}
   
-  PUSH{R1-R7,LR}
+  PUSH{R2-R7,LR}
     ; Check if it is empty
 	LDRB R6,[R1,#NUM_ENQD] 
 	
@@ -651,7 +651,7 @@ EndDeqSuccess
 	MSR APSR,R7
 EndProgramDeq
 	STR R2,[R1,#OUT_PTR]
-	POP{R1-R7, PC}
+	POP{R2-R7, PC}
 	ENDP  
 
 Enqueue PROC
