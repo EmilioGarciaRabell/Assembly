@@ -655,7 +655,7 @@ EndProgramDeq
 	POP{R2-R7, PC}
 	ENDP  
 
-Enqueue PROC
+
 ;---------------------------------------------------------------
 ;Attempts to put a character in the queue whose queue record structure�s
 ;address is in R1: if the queue is not full, enqueues the single character from R0 to the

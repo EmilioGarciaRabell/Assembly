@@ -860,612 +860,616 @@ ARM Macro Assembler    Page 14 Program Title for Listing Header Goes Here
   599 000001F4         ;Failure = FALSE;
   600 000001F4         ;}
   601 000001F4         ;return (Failure);}
-  602 000001F4         Dequeue PROC             {R1-R14}
-  603 000001F4 B41C            PUSH             {R2-R4}
-  604 000001F6         
-  605 000001F6 7C4B            LDRB             R3,[R1,#NUM_ENQD] ;load enqueue
-                                                            d number in R3
-  606 000001F8 2B00            CMP              R3,#0       ;if 0, set PSR C fl
-                                                            ag
-  607 000001FA DD14            BLE              DequeueFailed
-  608 000001FC         
-  609 000001FC 684C            LDR              R4,[R1,#OUT_PTR] 
-                                                            ;load OUT_PTR in R4
+  602 000001F4         Dequeue PROC
+  603 000001F4 B5FC            PUSH{R2-R7,LR}
+  604 000001F6         ; Check if it is empty
+  605 000001F6 7C4E            LDRB             R6,[R1,#NUM_ENQD]
+  606 000001F8         
+  607 000001F8 2E00            CMP              R6,#NULL
+  608 000001FA DD0D            BLE              EndDeqUnSuccess
+  609 000001FC         
+  610 000001FC 684A            LDR              R2,[R1,#OUT_PTR] 
+                                                            ; Queue->OutPointer
                                                             
-  610 000001FE 7820            LDRB             R0,[R4,#0]  ;place removed item
-                                                             in R0
-  611 00000200         
-  612 00000200 7C4B            LDRB             R3,[R1,#NUM_ENQD] ;load enqueue
-                                                            d number
-  613 00000202 1E5B            SUBS             R3,R3,#1    ;decrement num of e
-                                                            nqueued element
-  614 00000204 744B            STRB             R3,[R1,#NUM_ENQD] ;store elemen
-                                                            t to buffer
-  615 00000206         
-  616 00000206 1C64            ADDS             R4,R4,#1    ;increment OUT_PTR 
-                                                            location
-  617 00000208         
-  618 00000208 68CB            LDR              R3,[R1,#BUF_PAST]
-  619 0000020A 42A3            CMP              R3,R4       ;compare OUT_PTR to
-                                                             BUF_PAST
-  620 0000020C D001            BEQ              DequeueWrapBuffer ;if OUT_PTR >
-                                                            = BUF_PAST, wrap th
-                                                            e queue
-  621 0000020E         
-  622 0000020E 604C            STR              R4,[R1,#OUT_PTR]
-  623 00000210 E001            B                DequeueSuccess
-  624 00000212         
-  625 00000212         ;---------- wrap around the circular queue
-  626 00000212         DequeueWrapBuffer
-  627 00000212 688B            LDR              R3,[R1,#BUF_STRT]
-  628 00000214 604B            STR              R3,[R1,#OUT_PTR]
-  629 00000216         
-  630 00000216         ;---------- clear C flag because it successfully dequeue
-                       d
-  631 00000216         DequeueSuccess
-  632 00000216 F3EF 8700       MRS              R7,APSR
-  633 0000021A 2620            MOVS             R6,#0x20
-  634 0000021C 0636            LSLS             R6,R6,#24
-  635 0000021E 43B7            BICS             R7,R7,R6
-  636 00000220 F387 8800       MSR              APSR,R7
+  611 000001FE 7813            LDRB             R3,[R2,#0]  ; Queue->BufferPast
+                                                            , place item into R
+                                                            0
+  612 00000200         
+  613 00000200         ;*Character = *(Queue->OutPointer++);
+  614 00000200         ;(Queue->NumberEnqueued)--;
+  615 00000200         
+  616 00000200 7810            LDRB             R0,[R2,#0]
+  617 00000202         
+  618 00000202 7C4C            LDRB             R4,[R1,#NUM_ENQD]
+  619 00000204 1E76            SUBS             R6, R6, #1  ; reduce number of 
+                                                            elements in the que
+                                                            ue
+  620 00000206 744E            STRB             R6,[R1,#NUM_ENQD]
+  621 00000208         
+  622 00000208 1C52            ADDS             R2,R2,#1    ; 
+  623 0000020A         
+  624 0000020A 68CB            LDR              R3,[R1,#BUF_PAST]
+  625 0000020C 4293            CMP              R3,R2       ;compare out pointe
+                                                            r and buffer past
+  626 0000020E D001            BEQ              DeqWrap
+  627 00000210         
+  628 00000210 604A            STR              R2,[R1,#OUT_PTR]
+  629 00000212         
+  630 00000212 E009            B                EndDeqSuccess
+  631 00000214         
+  632 00000214         DeqWrap
+  633 00000214 688B            LDR              R3,[R1,#BUF_STRT]
+  634 00000216 604B            STR              R3,[R1,#OUT_PTR] ;Queue->OutPoi
+                                                            nter = Queue->Buffe
+                                                            rStart; 
+  635 00000218         
+  636 00000218         ;return C bit cleareed if succes set C otherwise
+  637 00000218         EndDeqUnSuccess
+  638 00000218         ;CLRC
+  639 00000218 F3EF 8300       MRS              R3, APSR
+  640 0000021C 2420            MOVS             R4, #0x20
 
 
 
 ARM Macro Assembler    Page 15 Program Title for Listing Header Goes Here
 
 
-  637 00000224 E007            B                DequeueEnd
-  638 00000226         
-  639 00000226         ;---------- set C flag because it failed to dequeue
-  640 00000226         DequeueFailed
-  641 00000226         
-  642 00000226 F3EF 8300       MRS              R3, APSR
-  643 0000022A 2420            MOVS             R4, #0x20
-  644 0000022C 0624            LSLS             R4, R4, #24
-  645 0000022E 4323            ORRS             R3, R3, R4
-  646 00000230 F383 8800       MSR              APSR, R3
-  647 00000234         
-  648 00000234 E7FF            B                DequeueEnd
-  649 00000236         
-  650 00000236         ;---------- end Dequeue subroutine
-  651 00000236 BC1C    DequeueEnd
-                               POP              {R2-R4}
-  652 00000238 4770            BX               LR
-  653 0000023A                 ENDP
-  654 0000023A         
-  655 0000023A         Enqueue PROC
-  656 0000023A         ;-------------------------------------------------------
+  641 0000021E 0624            LSLS             R4, R4, #24
+  642 00000220 4323            ORRS             R3, R3, R4
+  643 00000222 F383 8800       MSR              APSR, R3
+  644 00000226 E006            B                EndProgramDeq
+  645 00000228         
+  646 00000228         EndDeqSuccess
+  647 00000228         ;clear c flag
+  648 00000228 F3EF 8700       MRS              R7,APSR
+  649 0000022C 2620            MOVS             R6,#0x20
+  650 0000022E 0636            LSLS             R6,R6,#24
+  651 00000230 43B7            BICS             R7,R7,R6
+  652 00000232 F387 8800       MSR              APSR,R7
+  653 00000236         EndProgramDeq
+  654 00000236 604A            STR              R2,[R1,#OUT_PTR]
+  655 00000238 BDFC            POP{R2-R7,       PC}
+  656 0000023A                 ENDP
+  657 0000023A         
+  658 0000023A         
+  659 0000023A         ;-------------------------------------------------------
                        --------
-  657 0000023A         ;Attempts to put a character in the queue whose queue re
+  660 0000023A         ;Attempts to put a character in the queue whose queue re
                        cord structure�s
-  658 0000023A         ;address is in R1: if the queue is not full, enqueues th
+  661 0000023A         ;address is in R1: if the queue is not full, enqueues th
                        e single character from R0 to the
-  659 0000023A         ;queue, and returns with the PSR C bit cleared to report
+  662 0000023A         ;queue, and returns with the PSR C bit cleared to report
                         enqueue success; otherwise,
-  660 0000023A         ;returns with the PSR C bit set to report enqueue failur
+  663 0000023A         ;returns with the PSR C bit set to report enqueue failur
                        e.
-  661 0000023A         ;-------------------------------------------------------
+  664 0000023A         ;-------------------------------------------------------
                        --------
-  662 0000023A         ;/******************************************************
-                       *********/
-  663 0000023A         ;/* Enqueues Character to queue if queue is not full.   
-                               */
-  664 0000023A         ;/* Returns:  1 if failure; 0 otherwise                 
-                               */
   665 0000023A         ;/******************************************************
                        *********/
-  666 0000023A         
-  667 0000023A         ;int Enqueue (char Character, qRecord *Queue) {
-  668 0000023A         ;int Failure = TRUE;
+  666 0000023A         ;/* Enqueues Character to queue if queue is not full.   
+                               */
+  667 0000023A         ;/* Returns:  1 if failure; 0 otherwise                 
+                               */
+  668 0000023A         ;/******************************************************
+                       *********/
   669 0000023A         
-  670 0000023A         ;if (Queue->NumberEnqueued < Queue->BufferSize) {
-  671 0000023A         ;*(Queue->InPointer++) = Character;
-  672 0000023A         ;(Queue->NumberEnqueued)++;
-  673 0000023A         ;if (Queue->InPointer >= Queue->BufferPast) {
-  674 0000023A         ;Queue->InPointer = Queue->BufferStart;
-  675 0000023A         ;}
-  676 0000023A         ;Failure = FALSE;
-  677 0000023A         ;}
-  678 0000023A         ;return (Failure);}
-  679 0000023A         
-  680 0000023A B5FC            PUSH{R2-R7,LR}
-  681 0000023C         
-  682 0000023C         ; Check if it is full
-  683 0000023C 7C4B            LDRB             R3,[R1,#NUM_ENQD] 
-                                                            ; number enqued
+  670 0000023A         ;int Enqueue (char Character, qRecord *Queue) {
+  671 0000023A         ;int Failure = TRUE;
+  672 0000023A         
+  673 0000023A         ;if (Queue->NumberEnqueued < Queue->BufferSize) {
+  674 0000023A         ;*(Queue->InPointer++) = Character;
+  675 0000023A         ;(Queue->NumberEnqueued)++;
+  676 0000023A         ;if (Queue->InPointer >= Queue->BufferPast) {
+  677 0000023A         ;Queue->InPointer = Queue->BufferStart;
+  678 0000023A         ;}
+  679 0000023A         ;Failure = FALSE;
+  680 0000023A         ;}
+  681 0000023A         ;return (Failure);}
+  682 0000023A         
+  683 0000023A         Enqueue PROC             {R0-R14}
+  684 0000023A B41C            PUSH             {R2-R4}
+  685 0000023C         
+  686 0000023C 7C4B            LDRB             R3,[R1,#NUM_ENQD] ;load enqueue
+                                                            d num          
+  687 0000023E 7C0C            LDRB             R4,[R1,#BUF_SIZE] 
+                                                            ;load buffer size
 
 
 
 ARM Macro Assembler    Page 16 Program Title for Listing Header Goes Here
 
 
-  684 0000023E 690C            LDR              R4,[R1,#BUF_SIZE] ; Bufer size
-  685 00000240         
-  686 00000240 42A3            CMP              R3,R4
-  687 00000242 DA0E            BGE              EndEnqUnSuccess ; if  NUM_ENQD 
-                                                            >= BUF_SIZE the que
-                                                            ue is full
-  688 00000244         
-  689 00000244         ;if (Queue->InPointer >= Queue->BufferPast) {
-  690 00000244 680A            LDR              R2,[R1,#IN_PTR] 
-                                                            ; Queue->InPointer
-  691 00000246 7010            STRB             R0,[R2,#0]  ; store address to 
-                                                            enqueue 
-  692 00000248         
-  693 00000248 1C52            ADDS             R2,R2,#1    ; increment IN_PTR
-  694 0000024A 600A            STR              R2,[R1,#IN_PTR]
-  695 0000024C         
-  696 0000024C 7C4B            LDRB             R3,[R1,#NUM_ENQD] ; ; Increment
-                                                             the number of elem
-                                                            ents
-  697 0000024E 1C5B            ADDS             R3,R3,#1
-  698 00000250 744B            STRB             R3,[R1,#NUM_ENQD]
-  699 00000252         
-  700 00000252 680B            LDR              R3,[R1, #IN_PTR]
-  701 00000254 68CC            LDR              R4,[R1, #BUF_PAST]
-  702 00000256 42A3            CMP              R3,R4       ; if IN_ptr >= buf_
-                                                            past 
-  703 00000258 DA00            BGE              WrapCir
-  704 0000025A E00A            B                EndEnqSuccess
-  705 0000025C         
-  706 0000025C         
-  707 0000025C         WrapCir
-  708 0000025C 688A            LDR              R2,[R1,#BUF_STRT]
-  709 0000025E 600A            STR              R2,[R1,#IN_PTR]
-  710 00000260 E007            B                EndEnqSuccess
-  711 00000262         
-  712 00000262         
-  713 00000262         ;return C bit cleareed if succes set C otherwise
-  714 00000262         EndEnqUnSuccess
-  715 00000262 F3EF 8300       MRS              R3, APSR
-  716 00000266 2420            MOVS             R4, #0x20
-  717 00000268 0624            LSLS             R4, R4, #24
-  718 0000026A 4323            ORRS             R3, R3, R4
-  719 0000026C F383 8800       MSR              APSR, R3
-  720 00000270 E006            B                EndSubEnq
-  721 00000272         
-  722 00000272         EndEnqSuccess
-  723 00000272         ;clear c flag
-  724 00000272 F3EF 8700       MRS              R7,APSR
-  725 00000276 2620            MOVS             R6,#0x20
-  726 00000278 0636            LSLS             R6,R6,#24
-  727 0000027A 43B7            BICS             R7,R7,R6
-  728 0000027C F387 8800       MSR              APSR,R7
-  729 00000280         
-  730 00000280         EndSubEnq
-  731 00000280 BDFC            POP{R2-R7,       PC}
-  732 00000282                 ENDP
-  733 00000282         
-  734 00000282         
-  735 00000282         
+  688 00000240 42A3            CMP              R3,R4       ;compare enqueued n
+                                                            um with size
+  689 00000242 DA15            BGE              EnqueueFailed ;if NUM_ENQD >= B
+                                                            UF_SIZE, queue is f
+                                                            ull
+  690 00000244         
+  691 00000244 680B            LDR              R3,[R1,#IN_PTR] ;load mem addre
+                                                            ss of in_ptr
+  692 00000246 7018            STRB             R0,[R3,#0]  ;store the item to 
+                                                            be enqueued in mem 
+                                                            address
+  693 00000248         
+  694 00000248         ;---------- increment IN_PTR
+  695 00000248 1C5B            ADDS             R3,R3,#1
+  696 0000024A 600B            STR              R3,[R1,#IN_PTR]
+  697 0000024C         
+  698 0000024C         ;---------- increment enqueued elements number
+  699 0000024C 7C4B            LDRB             R3,[R1,#NUM_ENQD]
+  700 0000024E 1C5B            ADDS             R3,R3,#1
+  701 00000250 744B            STRB             R3,[R1,#NUM_ENQD]
+  702 00000252         
+  703 00000252         ;---------- if IN_PTR >= BUF_PAST, wrap around buffer
+  704 00000252 680B            LDR              R3,[R1,#IN_PTR]
+  705 00000254 68CC            LDR              R4,[R1,#BUF_PAST]
+  706 00000256 42A3            CMP              R3,R4
+  707 00000258 DA00            BGE              EnqueueWrapBuffer
+  708 0000025A E002            B                EnqueueSuccess
+  709 0000025C         
+  710 0000025C         ;---------- wrap around the circular queue
+  711 0000025C         EnqueueWrapBuffer
+  712 0000025C 688A            LDR              R2,[R1,#BUF_STRT]
+  713 0000025E 600A            STR              R2,[R1,#IN_PTR] ;store IN_PTR t
+                                                            o the front of queu
+                                                            e
+  714 00000260 E7FF            B                EnqueueSuccess
+  715 00000262         
+  716 00000262         ;---------- clear C flag because it successfully enqueue
+                       d
+  717 00000262         EnqueueSuccess
+  718 00000262 F3EF 8700       MRS              R7,APSR
+  719 00000266 2620            MOVS             R6,#0x20
+  720 00000268 0636            LSLS             R6,R6,#24
+  721 0000026A 43B7            BICS             R7,R7,R6
+  722 0000026C F387 8800       MSR              APSR,R7
+  723 00000270         
+  724 00000270         ;---------- set C flag because it failed to enqueue
+  725 00000270         EnqueueFailed
+  726 00000270 F3EF 8300       MRS              R3, APSR
+  727 00000274 2420            MOVS             R4, #0x20
+  728 00000276 0624            LSLS             R4, R4, #24
+  729 00000278 4323            ORRS             R3, R3, R4
+  730 0000027A F383 8800       MSR              APSR, R3
+  731 0000027E E7FF            B                EnqueueEnd
+  732 00000280         
+  733 00000280         ;---------- end Enqueue subroutine
+  734 00000280 BC1C    EnqueueEnd
+                               POP              {R2-R4}
+  735 00000282 4770            BX               LR
+  736 00000284                 ENDP
 
 
 
 ARM Macro Assembler    Page 17 Program Title for Listing Header Goes Here
 
 
-  736 00000282         ;-------------------------------------------------------
+  737 00000284         
+  738 00000284         
+  739 00000284         
+  740 00000284         
+  741 00000284         ;-------------------------------------------------------
                        --------
-  737 00000282         ;Prints to the terminal screen the text hexadecimal repr
+  742 00000284         ;Prints to the terminal screen the text hexadecimal repr
                        esentation of the
-  738 00000282         ;unsigned word value in R0. (For example, if R0 contains
+  743 00000284         ;unsigned word value in R0. (For example, if R0 contains
                         0x000012FF, then 000012FF
-  739 00000282         ;should print on the terminal. Note: 12FF would not be a
+  744 00000284         ;should print on the terminal. Note: 12FF would not be a
                        cceptable. Do not use division
-  740 00000282         ;to determine the hexadecimal digit values�use bit mas
+  745 00000284         ;to determine the hexadecimal digit values�use bit mas
                        ks and shifts.)
-  741 00000282         ;-------------------------------------------------------
+  746 00000284         ;-------------------------------------------------------
                        --------
-  742 00000282         PutNumHex
+  747 00000284         PutNumHex
                                PROC
-  743 00000282         ;void PutNumHex (uint32_t Number) {
-  744 00000282         ;/******************************************************
+  748 00000284         ;void PutNumHex (uint32_t Number) {
+  749 00000284         ;/******************************************************
                        *********/
-  745 00000282         ;/* Prints hex representation of unsigned word (32-bit) 
+  750 00000284         ;/* Prints hex representation of unsigned word (32-bit) 
                        number. */
-  746 00000282         ;/* Uses PutNumHexB                                     
+  751 00000284         ;/* Uses PutNumHexB                                     
                                */
-  747 00000282         ;/******************************************************
+  752 00000284         ;/******************************************************
                        *********/
-  748 00000282         ; unsigned int ShiftAmount;
-  749 00000282         
-  750 00000282         ;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 
+  753 00000284         ; unsigned int ShiftAmount;
+  754 00000284         
+  755 00000284         ;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 
                        4) {
-  751 00000282         ; PutChar ((char) HEXN2ASCII((Number >> ShiftAmount) & 0
+  756 00000284         ; PutChar ((char) HEXN2ASCII((Number >> ShiftAmount) & 0
                        x0F));
-  752 00000282         ;}
-  753 00000282         ;PutChar ((char) HEXN2ASCII(Number & 0x0F));
-  754 00000282         ;}
-  755 00000282         
-  756 00000282         ;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 
+  757 00000284         ;}
+  758 00000284         ;PutChar ((char) HEXN2ASCII(Number & 0x0F));
+  759 00000284         ;}
+  760 00000284         
+  761 00000284         ;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 
                        4) {
-  757 00000282         
-  758 00000282 B51E            PUSH             {R1-R4,LR}  ; Save registers
-  759 00000284         
-  760 00000284         ; Initialize ShiftAmount to 28
-  761 00000284 2320            MOVS             R3, #32
-  762 00000286         
-  763 00000286         ForHex
-  764 00000286 2B00            CMP              R3, #0      ; Check if ShiftAmo
+  762 00000284         
+  763 00000284 B51E            PUSH             {R1-R4,LR}  ; Save registers
+  764 00000286         
+  765 00000286         ; Initialize ShiftAmount to 28
+  766 00000286 2320            MOVS             R3, #32
+  767 00000288         
+  768 00000288         ForHex
+  769 00000288 2B00            CMP              R3, #0      ; Check if ShiftAmo
                                                             unt >= 0
-  765 00000288 DB12            BLT              EndForHex   ; If not, exit loop
+  770 0000028A DB12            BLT              EndForHex   ; If not, exit loop
                                                             
-  766 0000028A         
-  767 0000028A         
-  768 0000028A         ; Shift and mask
-  769 0000028A         
-  770 0000028A 240F            MOVS             R4, #0x0F   ; Mask for lower 4 
-                                                            bits
   771 0000028C         
-  772 0000028C 0002            MOVS             R2,R0
-  773 0000028E 40DA            LSRS             R2, R2, R3  ; Shift right by 4 
+  772 0000028C         
+  773 0000028C         ; Shift and mask
+  774 0000028C         
+  775 0000028C 240F            MOVS             R4, #0x0F   ; Mask for lower 4 
                                                             bits
-  774 00000290 4022            ANDS             R2, R2, R4  ; Mask out upper bi
-                                                            ts
-  775 00000292         
+  776 0000028E         
+  777 0000028E 0002            MOVS             R2,R0
+  778 00000290 40DA            LSRS             R2, R2, R3  ; Shift right by 4 
 
 
 
 ARM Macro Assembler    Page 18 Program Title for Listing Header Goes Here
 
 
-  776 00000292 2A0A            CMP              R2,#10
-  777 00000294 DA03            BGE              ConvertToAF ;if ASCII value >= 
+                                                            bits
+  779 00000292 4022            ANDS             R2, R2, R4  ; Mask out upper bi
+                                                            ts
+  780 00000294         
+  781 00000294 2A0A            CMP              R2,#10
+  782 00000296 DA03            BGE              ConvertToAF ;if ASCII value >= 
                                                             10,
-  778 00000296 3230            ADDS             R2,#'0'     ;else, add 0 to ASC
+  783 00000298 3230            ADDS             R2,#'0'     ;else, add 0 to ASC
                                                             II
-  779 00000298 E002            B                PrintX
-  780 0000029A 2B00            CMP              R3, #0      ; Check if ShiftAmo
+  784 0000029A E002            B                PrintX
+  785 0000029C 2B00            CMP              R3, #0      ; Check if ShiftAmo
                                                             unt >= 0
-  781 0000029C DB08            BLT              EndForHex   ; If not, exit loop
+  786 0000029E DB08            BLT              EndForHex   ; If not, exit loop
                                                             
-  782 0000029E         
-  783 0000029E         ConvertToAF
-  784 0000029E 3237            ADDS             R2,R2,#55   ;Convert to upperca
+  787 000002A0         
+  788 000002A0         ConvertToAF
+  789 000002A0 3237            ADDS             R2,R2,#55   ;Convert to upperca
                                                             se
-  785 000002A0         
-  786 000002A0         PrintX
-  787 000002A0 B401            PUSH             {R0}        ;keep input unchang
+  790 000002A2         
+  791 000002A2         PrintX
+  792 000002A2 B401            PUSH             {R0}        ;keep input unchang
                                                             ed
-  788 000002A2 0010            MOVS             R0,R2
-  789 000002A4 F7FF FFFE       BL               PutChar
-  790 000002A8 BC01            POP              {R0}
-  791 000002AA         
-  792 000002AA 2200            MOVS             R2,#0       ;reset R4
-  793 000002AC         
-  794 000002AC 1F1B            SUBS             R3,R3,#4    ;decrement loop cou
+  793 000002A4 0010            MOVS             R0,R2
+  794 000002A6 F7FF FFFE       BL               PutChar
+  795 000002AA BC01            POP              {R0}
+  796 000002AC         
+  797 000002AC 2200            MOVS             R2,#0       ;reset R4
+  798 000002AE         
+  799 000002AE 1F1B            SUBS             R3,R3,#4    ;decrement loop cou
                                                             nter
-  795 000002AE E7EA            B                ForHex      ;loop
-  796 000002B0         
-  797 000002B0         
-  798 000002B0         EndForHex
-  799 000002B0 BD1E            POP              {R1-R4,PC}  ; Restore registers
-                                                             and return
-  800 000002B2                 ENDP
+  800 000002B0 E7EA            B                ForHex      ;loop
   801 000002B2         
   802 000002B2         
-  803 000002B2         
-  804 000002B2         ;/* Convert binary value of nibble to ASCII character */
+  803 000002B2         EndForHex
+  804 000002B2 BD1E            POP              {R1-R4,PC}  ; Restore registers
+                                                             and return
+  805 000002B4                 ENDP
+  806 000002B4         
+  807 000002B4         
+  808 000002B4         
+  809 000002B4         ;/* Convert binary value of nibble to ASCII character */
                        
-  805 000002B2         ;#define HEXN2ASCII(NIBBLE) ((NIBBLE) < 10 ? ((NIBBLE) +
+  810 000002B4         ;#define HEXN2ASCII(NIBBLE) ((NIBBLE) < 10 ? ((NIBBLE) +
                         '0') : ((NIBBLE) - 10 + 'A'))
-  806 000002B2         ;MOVE THIS TO THE MACRO SECTION on top of the program
-  807 000002B2         
-  808 000002B2         ;end macro
-  809 000002B2         
-  810 000002B2         ;-------------------------------------------------------
+  811 000002B4         ;MOVE THIS TO THE MACRO SECTION on top of the program
+  812 000002B4         
+  813 000002B4         ;end macro
+  814 000002B4         
+  815 000002B4         ;-------------------------------------------------------
                        --------
-  811 000002B2         ;Prints to the terminal screen the text decimal represen
+  816 000002B4         ;Prints to the terminal screen the text decimal represen
                        tation of the
-  812 000002B2         ;unsigned byte value in R0. (For example, if R0 contains
+  817 000002B4         ;unsigned byte value in R0. (For example, if R0 contains
                         0x003021101, then 1 should
-  813 000002B2         ;print on the terminal. Note: 001 would also be acceptab
+  818 000002B4         ;print on the terminal. Note: 001 would also be acceptab
                        le, as the text decimal
-  814 000002B2         ;representation of 0x01.) (Hint: use a mask to preserve 
+  819 000002B4         ;representation of 0x01.) (Hint: use a mask to preserve 
                        only the least byte of the word
-  815 000002B2         ;in R0, and call your PutNumU subroutine from Lab Exerci
-                       se Six.)
-  816 000002B2         ;-------------------------------------------------------
-                       --------
-  817 000002B2         PutNumUB
+  820 000002B4         ;in R0, and call your PutNumU subroutine from Lab Exerci
 
 
 
 ARM Macro Assembler    Page 19 Program Title for Listing Header Goes Here
 
 
+                       se Six.)
+  821 000002B4         ;-------------------------------------------------------
+                       --------
+  822 000002B4         PutNumUB
                                PROC
-  818 000002B2         ;/******************************************************
+  823 000002B4         ;/******************************************************
                        *********/
-  819 000002B2         ;/* Prints text representation of unsigned word (32-bit)
+  824 000002B4         ;/* Prints text representation of unsigned word (32-bit)
                         in a   */
-  820 000002B2         ;/* minimum number of characters.                       
+  825 000002B4         ;/* minimum number of characters.                       
                                */
-  821 000002B2         ;/* number.                                             
+  826 000002B4         ;/* number.                                             
                                */
-  822 000002B2         ;/* Uses:  PutString                                    
+  827 000002B4         ;/* Uses:  PutString                                    
                                */
-  823 000002B2         ;/******************************************************
+  828 000002B4         ;/******************************************************
                        *********/
-  824 000002B2         ;/* String for number digits up to 4 billion */
-  825 000002B2         ;char String[MAX_WORD_DECIMAL_DIGITS + 1];
-  826 000002B2         ;char *StringPtr;
-  827 000002B2         
-  828 000002B2         ;StringPtr = &(String[MAX_WORD_DECIMAL_DIGITS]);
-  829 000002B2         ;*StringPtr = 0;
-  830 000002B2         
-  831 000002B2         ;do {
-  832 000002B2         ;/* next least significant digit is remainder of divisio
+  829 000002B4         ;/* String for number digits up to 4 billion */
+  830 000002B4         ;char String[MAX_WORD_DECIMAL_DIGITS + 1];
+  831 000002B4         ;char *StringPtr;
+  832 000002B4         
+  833 000002B4         ;StringPtr = &(String[MAX_WORD_DECIMAL_DIGITS]);
+  834 000002B4         ;*StringPtr = 0;
+  835 000002B4         
+  836 000002B4         ;do {
+  837 000002B4         ;/* next least significant digit is remainder of divisio
                        n by 10 */
-  833 000002B2         ;*(--StringPtr) = ((char) (Number % 10u)) + '0';
-  834 000002B2         ;/* rest of number to print */
-  835 000002B2         ;Number /= 10u; 
-  836 000002B2         ;} while (Number > 0);
-  837 000002B2         ;/* print text digits of number */
-  838 000002B2         ;PutStringSB (StringPtr, (MAX_WORD_DECIMAL_DIGITS + 1));
+  838 000002B4         ;*(--StringPtr) = ((char) (Number % 10u)) + '0';
+  839 000002B4         ;/* rest of number to print */
+  840 000002B4         ;Number /= 10u; 
+  841 000002B4         ;} while (Number > 0);
+  842 000002B4         ;/* print text digits of number */
+  843 000002B4         ;PutStringSB (StringPtr, (MAX_WORD_DECIMAL_DIGITS + 1));
                        
-  839 000002B2         ;} /* PutNumU */
-  840 000002B2 B401            PUSH             {R0}
-  841 000002B4         
-  842 000002B4 6800            LDR              R0,[R0,#0]
-  843 000002B6 24FF            MOVS             R4,#0xFF
-  844 000002B8 4020            ANDS             R0,R0,R4
-  845 000002BA F7FF FFFE       BL               PutNumU
-  846 000002BE         
-  847 000002BE         
-  848 000002BE BC01            POP              {R0}
-  849 000002C0                 ENDP
-  850 000002C0         
-  851 000002C0         ;-------------------------------------------------------
+  844 000002B4         ;} /* PutNumU */
+  845 000002B4 B401            PUSH             {R0}
+  846 000002B6         
+  847 000002B6 6800            LDR              R0,[R0,#0]
+  848 000002B8 24FF            MOVS             R4,#0xFF
+  849 000002BA 4020            ANDS             R0,R0,R4
+  850 000002BC F7FF FFFE       BL               PutNumU
+  851 000002C0         
+  852 000002C0         
+  853 000002C0 BC01            POP              {R0}
+  854 000002C2                 ENDP
+  855 000002C2         
+  856 000002C2         ;-------------------------------------------------------
                        --------
-  852 000002C0         ;-------------------------------------------------------
+  857 000002C2         ;-------------------------------------------------------
                        --------
-  853 000002C0         
-  854 000002C0         PutNumU PROC             {R0-R14}
-  855 000002C0 B507            PUSH             {R0,R1,R2,LR} ;for nested subro
+  858 000002C2         
+  859 000002C2         PutNumU PROC             {R0-R14}
+  860 000002C2 B507            PUSH             {R0,R1,R2,LR} ;for nested subro
                                                             utine
-  856 000002C2 2200            MOVS             R2,#0       ;initalize array of
+  861 000002C4 2200            MOVS             R2,#0       ;initalize array of
                                                             fset
-  857 000002C4         
-  858 000002C4 280A    DIV10   CMP              R0,#10      ;check if num < 10
-  859 000002C6 DB09            BLT              EndPutNumU
-  860 000002C8         
-  861 000002C8 0001            MOVS             R1,R0       ;dividend in R1
-  862 000002CA 200A            MOVS             R0,#10      ;divisor is 10
-  863 000002CC F7FF FFFE       BL               DIVU        ;divide
+  862 000002C6         
+  863 000002C6 280A    DIV10   CMP              R0,#10      ;check if num < 10
+  864 000002C8 DB09            BLT              EndPutNumU
 
 
 
 ARM Macro Assembler    Page 20 Program Title for Listing Header Goes Here
 
 
-  864 000002D0         
-  865 000002D0 B401            PUSH             {R0}
-  866 000002D2 4843            LDR              R0,=putUvar
-  867 000002D4         
-  868 000002D4 5481            STRB             R1,[R0,R2]
-  869 000002D6 1C52            ADDS             R2,R2,#1
-  870 000002D8 BC01            POP              {R0}
-  871 000002DA E7F3            B                DIV10       ;keep diving by 10 
+  865 000002CA         
+  866 000002CA 0001            MOVS             R1,R0       ;dividend in R1
+  867 000002CC 200A            MOVS             R0,#10      ;divisor is 10
+  868 000002CE F7FF FFFE       BL               DIVU        ;divide
+  869 000002D2         
+  870 000002D2 B401            PUSH             {R0}
+  871 000002D4 4842            LDR              R0,=putUvar
+  872 000002D6         
+  873 000002D6 5481            STRB             R1,[R0,R2]
+  874 000002D8 1C52            ADDS             R2,R2,#1
+  875 000002DA BC01            POP              {R0}
+  876 000002DC E7F3            B                DIV10       ;keep diving by 10 
                                                             until it can't
-  872 000002DC         
-  873 000002DC 3030    EndPutNumU
+  877 000002DE         
+  878 000002DE 3030    EndPutNumU
                                ADDS             R0,R0,#'0'  ;convert to ascii
-  874 000002DE F7FF FFFE       BL               PutChar     ;echo to terminal
-  875 000002E2 1E52            SUBS             R2,R2,#1    ;decrement string a
+  879 000002E0 F7FF FFFE       BL               PutChar     ;echo to terminal
+  880 000002E4 1E52            SUBS             R2,R2,#1    ;decrement string a
                                                             rray
-  876 000002E4         
-  877 000002E4 483E    PrintChar
+  881 000002E6         
+  882 000002E6 483E    PrintChar
                                LDR              R0,=putUvar ;array iteration
-  878 000002E6 2A00            CMP              R2,#0
-  879 000002E8 DB06            BLT              EndPutNum
-  880 000002EA         
-  881 000002EA 5C81            LDRB             R1,[R0,R2]
-  882 000002EC 0008            MOVS             R0,R1
-  883 000002EE         
-  884 000002EE 3030            ADDS             R0,R0,#'0'  ;convert to ascii
-  885 000002F0 F7FF FFFE       BL               PutChar     ;echo to terminal
-  886 000002F4         
-  887 000002F4 1E52            SUBS             R2,R2,#1
-  888 000002F6 E7F5            B                PrintChar
-  889 000002F8         
-  890 000002F8 BD07    EndPutNum
+  883 000002E8 2A00            CMP              R2,#0
+  884 000002EA DB06            BLT              EndPutNum
+  885 000002EC         
+  886 000002EC 5C81            LDRB             R1,[R0,R2]
+  887 000002EE 0008            MOVS             R0,R1
+  888 000002F0         
+  889 000002F0 3030            ADDS             R0,R0,#'0'  ;convert to ascii
+  890 000002F2 F7FF FFFE       BL               PutChar     ;echo to terminal
+  891 000002F6         
+  892 000002F6 1E52            SUBS             R2,R2,#1
+  893 000002F8 E7F5            B                PrintChar
+  894 000002FA         
+  895 000002FA BD07    EndPutNum
                                POP              {R0,R1,R2,PC} ;for nested subro
                                                             utine
-  891 000002FA                 ENDP
-  892 000002FA         
-  893 000002FA         
-  894 000002FA         ;-------------------------------------------------------
-                       --------
-  895 000002FA         
-  896 000002FA         DIVU    PROC             {R2-R14}    ; 
-  897 000002FA B41C            PUSH{R2,         R3, R4}
+  896 000002FC                 ENDP
+  897 000002FC         
   898 000002FC         
-  899 000002FC 2800            CMP              R0, #0      ; Check if R0 is = 
+  899 000002FC         ;-------------------------------------------------------
+                       --------
+  900 000002FC         
+  901 000002FC         DIVU    PROC             {R2-R14}    ; 
+  902 000002FC B41C            PUSH{R2,         R3, R4}
+  903 000002FE         
+  904 000002FE 2800            CMP              R0, #0      ; Check if R0 is = 
                                                             0
-  900 000002FE         
-  901 000002FE D00E            BEQ              DivB0
-  902 00000300         
-  903 00000300         
-  904 00000300 2200            MOVS             R2, #0      ;
-  905 00000302         
-  906 00000302         WhileLoopD
-  907 00000302 4281            CMP              R1, R0      ; while(R0 > R1){
-  908 00000304 D302            BLO              Remainder
-  909 00000306         
-  910 00000306 1C52            ADDS             R2, R2, #1  ; Quotient++
-  911 00000308 1A09            SUBS             R1, R1, R0  ; Divisor -= Divide
-                                                            nd 
-  912 0000030A         
-  913 0000030A E7FA            B                WhileLoopD  ;}
+  905 00000300         
+  906 00000300 D00E            BEQ              DivB0
+  907 00000302         
+  908 00000302         
+  909 00000302 2200            MOVS             R2, #0      ;
+  910 00000304         
+  911 00000304         WhileLoopD
+  912 00000304 4281            CMP              R1, R0      ; while(R0 > R1){
+  913 00000306 D302            BLO              Remainder
+  914 00000308         
+  915 00000308 1C52            ADDS             R2, R2, #1  ; Quotient++
 
 
 
 ARM Macro Assembler    Page 21 Program Title for Listing Header Goes Here
 
 
-  914 0000030C         
-  915 0000030C         
-  916 0000030C         Remainder
+  916 0000030A 1A09            SUBS             R1, R1, R0  ; Divisor -= Divide
+                                                            nd 
   917 0000030C         
-  918 0000030C 0010            MOVS             R0, R2      ; New Quotient 
+  918 0000030C E7FA            B                WhileLoopD  ;}
   919 0000030E         
-  920 0000030E F3EF 8300       MRS              R3, APSR
-  921 00000312 2420            MOVS             R4, #0x20
-  922 00000314 0624            LSLS             R4, R4, #24
-  923 00000316 43A3            BICS             R3, R3, R4
-  924 00000318 F383 8800       MSR              APSR, R3
-  925 0000031C         
-  926 0000031C E006            B                EndDivu
-  927 0000031E         
-  928 0000031E         DivB0
-  929 0000031E F3EF 8300       MRS              R3, APSR
-  930 00000322 2420            MOVS             R4, #0x20
-  931 00000324 0624            LSLS             R4, R4, #24
-  932 00000326 4323            ORRS             R3, R3, R4
-  933 00000328 F383 8800       MSR              APSR, R3
-  934 0000032C         
-  935 0000032C         
-  936 0000032C         EndDivu
-  937 0000032C         
-  938 0000032C BC1C            POP{R2,          R3, R4}
-  939 0000032E 4770            BX               LR
-  940 00000330                 ENDP
-  941 00000330         
-  942 00000330         
-  943 00000330         
-  944 00000330         
-  945 00000330         Init_UART0_Polling
+  920 0000030E         
+  921 0000030E         Remainder
+  922 0000030E         
+  923 0000030E 0010            MOVS             R0, R2      ; New Quotient 
+  924 00000310         
+  925 00000310 F3EF 8300       MRS              R3, APSR
+  926 00000314 2420            MOVS             R4, #0x20
+  927 00000316 0624            LSLS             R4, R4, #24
+  928 00000318 43A3            BICS             R3, R3, R4
+  929 0000031A F383 8800       MSR              APSR, R3
+  930 0000031E         
+  931 0000031E E006            B                EndDivu
+  932 00000320         
+  933 00000320         DivB0
+  934 00000320 F3EF 8300       MRS              R3, APSR
+  935 00000324 2420            MOVS             R4, #0x20
+  936 00000326 0624            LSLS             R4, R4, #24
+  937 00000328 4323            ORRS             R3, R3, R4
+  938 0000032A F383 8800       MSR              APSR, R3
+  939 0000032E         
+  940 0000032E         
+  941 0000032E         EndDivu
+  942 0000032E         
+  943 0000032E BC1C            POP{R2,          R3, R4}
+  944 00000330 4770            BX               LR
+  945 00000332                 ENDP
+  946 00000332         
+  947 00000332         
+  948 00000332         
+  949 00000332         
+  950 00000332         Init_UART0_Polling
                                PROC             {R3-R15}    ; initialize UART0 
                                                             polling 
-  946 00000330         
-  947 00000330 B407            PUSH             {R0, R1, R2}
-  948 00000332         
-  949 00000332         ;Select MCGFLLCLK as UART0 clock source
-  950 00000332         
-  951 00000332 483D            LDR              R0,=SIM_SOPT2
-  952 00000334 493D            LDR              R1,=SIM_SOPT2_UART0SRC_MASK
-  953 00000336 6802            LDR              R2,[R0,#0]
-  954 00000338 438A            BICS             R2,R2,R1
-  955 0000033A 493D            LDR              R1,=SIM_SOPT2_UART0SRC_MCGFLLCL
+  951 00000332         
+  952 00000332 B407            PUSH             {R0, R1, R2}
+  953 00000334         
+  954 00000334         ;Select MCGFLLCLK as UART0 clock source
+  955 00000334         
+  956 00000334 483C            LDR              R0,=SIM_SOPT2
+  957 00000336 493D            LDR              R1,=SIM_SOPT2_UART0SRC_MASK
+  958 00000338 6802            LDR              R2,[R0,#0]
+  959 0000033A 438A            BICS             R2,R2,R1
+  960 0000033C 493C            LDR              R1,=SIM_SOPT2_UART0SRC_MCGFLLCL
 K
-  956 0000033C 430A            ORRS             R2,R2,R1
-  957 0000033E 6002            STR              R2,[R0,#0]
-  958 00000340         
-  959 00000340         ;Set UART0 for external connection
-  960 00000340         
-  961 00000340 483C            LDR              R0,=SIM_SOPT5
-  962 00000342 493D            LDR              R1,=SIM_SOPT5_UART0_EXTERN_MASK
+  961 0000033E 430A            ORRS             R2,R2,R1
+  962 00000340 6002            STR              R2,[R0,#0]
+  963 00000342         
+  964 00000342         ;Set UART0 for external connection
+  965 00000342         
+  966 00000342 483C            LDR              R0,=SIM_SOPT5
+  967 00000344 493C            LDR              R1,=SIM_SOPT5_UART0_EXTERN_MASK
 _CLEAR
-  963 00000344 6802            LDR              R2,[R0,#0]
-  964 00000346 438A            BICS             R2,R2,R1
-  965 00000348 6002            STR              R2,[R0,#0]
-  966 0000034A         
-  967 0000034A         ;Enable UART0 module clock
-  968 0000034A         
+  968 00000346 6802            LDR              R2,[R0,#0]
+  969 00000348 438A            BICS             R2,R2,R1
 
 
 
 ARM Macro Assembler    Page 22 Program Title for Listing Header Goes Here
 
 
-  969 0000034A 483C            LDR              R0,=SIM_SCGC4
-  970 0000034C 493C            LDR              R1,=SIM_SCGC4_UART0_MASK
-  971 0000034E 6802            LDR              R2,[R0,#0]
-  972 00000350 430A            ORRS             R2,R2,R1
-  973 00000352 6002            STR              R2,[R0,#0]
-  974 00000354         ;Enable PORT B module clock
-  975 00000354 483B            LDR              R0,=SIM_SCGC5
-  976 00000356 493A            LDR              R1,=SIM_SCGC5_PORTB_MASK
-  977 00000358 6802            LDR              R2,[R0,#0]
-  978 0000035A 430A            ORRS             R2,R2,R1
-  979 0000035C 6002            STR              R2,[R0,#0]
-  980 0000035E         
-  981 0000035E         ;Select PORT B Pin 2 (D0) for UART0 RX (J8 Pin 01)
-  982 0000035E         
-  983 0000035E 483A            LDR              R0,=PORTB_PCR2
-  984 00000360 493A            LDR              R1,=PORT_PCR_SET_PTB2_UART0_RX
-  985 00000362 6001            STR              R1,[R0,#0]
-  986 00000364         
-  987 00000364         ; Select PORT B Pin 1 (D1) for UART0 TX (J8 Pin 02)
-  988 00000364         
-  989 00000364 483A            LDR              R0,=PORTB_PCR1
-  990 00000366 4939            LDR              R1,=PORT_PCR_SET_PTB1_UART0_TX
-  991 00000368 6001            STR              R1,[R0,#0]
-  992 0000036A         
-  993 0000036A         ;Disable UART0 receiver and transmitter
-  994 0000036A         
-  995 0000036A 482A            LDR              R0,=UART0_BASE
-  996 0000036C 210C            MOVS             R1,#UART0_C2_T_R
-  997 0000036E 78C2            LDRB             R2,[R0,#UART0_C2_OFFSET]
-  998 00000370 438A            BICS             R2,R2,R1
-  999 00000372 70C2            STRB             R2,[R0,#UART0_C2_OFFSET]
- 1000 00000374         
- 1001 00000374         ;Set UART0 for 9600 baud, 8N1 protocol
- 1002 00000374         
- 1003 00000374 2101            MOVS             R1,#UART0_BDH_9600
- 1004 00000376 7001            STRB             R1,[R0,#UART0_BDH_OFFSET]
- 1005 00000378 2138            MOVS             R1,#UART0_BDL_9600
- 1006 0000037A 7041            STRB             R1,[R0,#UART0_BDL_OFFSET]
- 1007 0000037C 2100            MOVS             R1,#UART0_C1_8N1
- 1008 0000037E 7081            STRB             R1,[R0,#UART0_C1_OFFSET]
- 1009 00000380 2100            MOVS             R1,#UART0_C3_NO_TXINV
- 1010 00000382 7181            STRB             R1,[R0,#UART0_C3_OFFSET]
- 1011 00000384 210F            MOVS             R1,#UART0_C4_NO_MATCH_OSR_16
- 1012 00000386 7281            STRB             R1,[R0,#UART0_C4_OFFSET]
- 1013 00000388 2100            MOVS             R1,#UART0_C5_NO_DMA_SSR_SYNC
- 1014 0000038A 72C1            STRB             R1,[R0,#UART0_C5_OFFSET]
- 1015 0000038C 211F            MOVS             R1,#UART0_S1_CLEAR_FLAGS
- 1016 0000038E 7101            STRB             R1,[R0,#UART0_S1_OFFSET]
- 1017 00000390 21C0            MOVS             R1, #UART0_S2_NO_RXINV_BRK10_NO
+  970 0000034A 6002            STR              R2,[R0,#0]
+  971 0000034C         
+  972 0000034C         ;Enable UART0 module clock
+  973 0000034C         
+  974 0000034C 483B            LDR              R0,=SIM_SCGC4
+  975 0000034E 493C            LDR              R1,=SIM_SCGC4_UART0_MASK
+  976 00000350 6802            LDR              R2,[R0,#0]
+  977 00000352 430A            ORRS             R2,R2,R1
+  978 00000354 6002            STR              R2,[R0,#0]
+  979 00000356         ;Enable PORT B module clock
+  980 00000356 483B            LDR              R0,=SIM_SCGC5
+  981 00000358 4939            LDR              R1,=SIM_SCGC5_PORTB_MASK
+  982 0000035A 6802            LDR              R2,[R0,#0]
+  983 0000035C 430A            ORRS             R2,R2,R1
+  984 0000035E 6002            STR              R2,[R0,#0]
+  985 00000360         
+  986 00000360         ;Select PORT B Pin 2 (D0) for UART0 RX (J8 Pin 01)
+  987 00000360         
+  988 00000360 4839            LDR              R0,=PORTB_PCR2
+  989 00000362 493A            LDR              R1,=PORT_PCR_SET_PTB2_UART0_RX
+  990 00000364 6001            STR              R1,[R0,#0]
+  991 00000366         
+  992 00000366         ; Select PORT B Pin 1 (D1) for UART0 TX (J8 Pin 02)
+  993 00000366         
+  994 00000366 483A            LDR              R0,=PORTB_PCR1
+  995 00000368 4938            LDR              R1,=PORT_PCR_SET_PTB1_UART0_TX
+  996 0000036A 6001            STR              R1,[R0,#0]
+  997 0000036C         
+  998 0000036C         ;Disable UART0 receiver and transmitter
+  999 0000036C         
+ 1000 0000036C 4829            LDR              R0,=UART0_BASE
+ 1001 0000036E 210C            MOVS             R1,#UART0_C2_T_R
+ 1002 00000370 78C2            LDRB             R2,[R0,#UART0_C2_OFFSET]
+ 1003 00000372 438A            BICS             R2,R2,R1
+ 1004 00000374 70C2            STRB             R2,[R0,#UART0_C2_OFFSET]
+ 1005 00000376         
+ 1006 00000376         ;Set UART0 for 9600 baud, 8N1 protocol
+ 1007 00000376         
+ 1008 00000376 2101            MOVS             R1,#UART0_BDH_9600
+ 1009 00000378 7001            STRB             R1,[R0,#UART0_BDH_OFFSET]
+ 1010 0000037A 2138            MOVS             R1,#UART0_BDL_9600
+ 1011 0000037C 7041            STRB             R1,[R0,#UART0_BDL_OFFSET]
+ 1012 0000037E 2100            MOVS             R1,#UART0_C1_8N1
+ 1013 00000380 7081            STRB             R1,[R0,#UART0_C1_OFFSET]
+ 1014 00000382 2100            MOVS             R1,#UART0_C3_NO_TXINV
+ 1015 00000384 7181            STRB             R1,[R0,#UART0_C3_OFFSET]
+ 1016 00000386 210F            MOVS             R1,#UART0_C4_NO_MATCH_OSR_16
+ 1017 00000388 7281            STRB             R1,[R0,#UART0_C4_OFFSET]
+ 1018 0000038A 2100            MOVS             R1,#UART0_C5_NO_DMA_SSR_SYNC
+ 1019 0000038C 72C1            STRB             R1,[R0,#UART0_C5_OFFSET]
+ 1020 0000038E 211F            MOVS             R1,#UART0_S1_CLEAR_FLAGS
+ 1021 00000390 7101            STRB             R1,[R0,#UART0_S1_OFFSET]
+ 1022 00000392 21C0            MOVS             R1, #UART0_S2_NO_RXINV_BRK10_NO
 _LBKDETECT_CLEAR_FLAGS
- 1018 00000392 7141            STRB             R1,[R0,#UART0_S2_OFFSET]
- 1019 00000394         
- 1020 00000394         ;Enable UART0 receiver and transmitter
- 1021 00000394         
- 1022 00000394 210C            MOVS             R1,#UART0_C2_T_R
- 1023 00000396 70C1            STRB             R1,[R0,#UART0_C2_OFFSET]
- 1024 00000398         
- 1025 00000398 BC07            POP              {R0, R1, R2}
- 1026 0000039A         
+ 1023 00000394 7141            STRB             R1,[R0,#UART0_S2_OFFSET]
+ 1024 00000396         
+ 1025 00000396         ;Enable UART0 receiver and transmitter
+ 1026 00000396         
+ 1027 00000396 210C            MOVS             R1,#UART0_C2_T_R
 
 
 
 ARM Macro Assembler    Page 23 Program Title for Listing Header Goes Here
 
 
- 1027 0000039A 4770            BX               LR
- 1028 0000039C         
- 1029 0000039C                 ENDP                         ; end initialize UA
+ 1028 00000398 70C1            STRB             R1,[R0,#UART0_C2_OFFSET]
+ 1029 0000039A         
+ 1030 0000039A BC07            POP              {R0, R1, R2}
+ 1031 0000039C         
+ 1032 0000039C 4770            BX               LR
+ 1033 0000039E         
+ 1034 0000039E                 ENDP                         ; end initialize UA
                                                             RT0 polling subrout
                                                             ine 
- 1030 0000039C         
- 1031 0000039C         ;-------------------------------------------------------
+ 1035 0000039E         
+ 1036 0000039E         ;-------------------------------------------------------
                        --------
- 1032 0000039C         ;-------------------------------------------------------
+ 1037 0000039E         ;-------------------------------------------------------
                        --------
- 1033 0000039C         
- 1034 0000039C         NewLine PROC             {R0, R14}
- 1035 0000039C B5FF            PUSH             {R0-R7, LR}
- 1036 0000039E         
- 1037 0000039E 200D            MOVS             R0,#CR
- 1038 000003A0 F7FF FFFE       BL               PutChar
- 1039 000003A4         
- 1040 000003A4 200A            MOVS             R0,#LF
- 1041 000003A6 F7FF FFFE       BL               PutChar
- 1042 000003AA         
- 1043 000003AA BDFF            POP              {R0-R7, PC}
- 1044 000003AC 4770            BX               LR
- 1045 000003AE                 ENDP
- 1046 000003AE         
- 1047 000003AE         
- 1048 000003AE         ;>>>>>   end subroutine code <<<<<
- 1049 000003AE 00 00           ALIGN
- 1050 000003B0         ;*******************************************************
+ 1038 0000039E         
+ 1039 0000039E         NewLine PROC             {R0, R14}
+ 1040 0000039E B5FF            PUSH             {R0-R7, LR}
+ 1041 000003A0         
+ 1042 000003A0 200D            MOVS             R0,#CR
+ 1043 000003A2 F7FF FFFE       BL               PutChar
+ 1044 000003A6         
+ 1045 000003A6 200A            MOVS             R0,#LF
+ 1046 000003A8 F7FF FFFE       BL               PutChar
+ 1047 000003AC         
+ 1048 000003AC BDFF            POP              {R0-R7, PC}
+ 1049 000003AE 4770            BX               LR
+ 1050 000003B0                 ENDP
+ 1051 000003B0         
+ 1052 000003B0         
+ 1053 000003B0         ;>>>>>   end subroutine code <<<<<
+ 1054 000003B0                 ALIGN
+ 1055 000003B0         ;*******************************************************
                        *********
- 1051 000003B0         ;Vector Table Mapped to Address 0 at Reset
- 1052 000003B0         ;Linker requires __Vectors to be exported
- 1053 000003B0 00000000 
+ 1056 000003B0         ;Vector Table Mapped to Address 0 at Reset
+ 1057 000003B0         ;Linker requires __Vectors to be exported
+ 1058 000003B0 00000000 
               00000000 
               00000000 
               00000000 
@@ -1487,10 +1491,6 @@ ARM Macro Assembler    Page 23 Program Title for Listing Header Goes Here
               00000000 
               00000000 
               00000000 
-              00000000 
-              00000000 
-              00000000 
-              4006A000 
               00000000 
               00000000 
 
@@ -1499,6 +1499,10 @@ ARM Macro Assembler    Page 23 Program Title for Listing Header Goes Here
 ARM Macro Assembler    Page 24 Program Title for Listing Header Goes Here
 
 
+              00000000 
+              4006A000 
+              00000000 
+              00000000 
               00000000 
               00000000 
               40048004 
@@ -1512,100 +1516,100 @@ ARM Macro Assembler    Page 24 Program Title for Listing Header Goes Here
               4004A008 
               01000200 
               4004A004         AREA             RESET, DATA, READONLY
- 1054 00000000                 EXPORT           __Vectors
- 1055 00000000                 EXPORT           __Vectors_End
- 1056 00000000                 EXPORT           __Vectors_Size
- 1057 00000000                 IMPORT           __initial_sp
- 1058 00000000                 IMPORT           Dummy_Handler
- 1059 00000000                 IMPORT           HardFault_Handler
- 1060 00000000         __Vectors
- 1061 00000000         ;ARM core vectors
- 1062 00000000 00000000        DCD              __initial_sp ;00:end of stack
- 1063 00000004 00000000        DCD              Reset_Handler ;01:reset vector
- 1064 00000008 00000000        DCD              Dummy_Handler ;02:NMI
- 1065 0000000C 00000000        DCD              HardFault_Handler 
+ 1059 00000000                 EXPORT           __Vectors
+ 1060 00000000                 EXPORT           __Vectors_End
+ 1061 00000000                 EXPORT           __Vectors_Size
+ 1062 00000000                 IMPORT           __initial_sp
+ 1063 00000000                 IMPORT           Dummy_Handler
+ 1064 00000000                 IMPORT           HardFault_Handler
+ 1065 00000000         __Vectors
+ 1066 00000000         ;ARM core vectors
+ 1067 00000000 00000000        DCD              __initial_sp ;00:end of stack
+ 1068 00000004 00000000        DCD              Reset_Handler ;01:reset vector
+ 1069 00000008 00000000        DCD              Dummy_Handler ;02:NMI
+ 1070 0000000C 00000000        DCD              HardFault_Handler 
                                                             ;03:hard fault
- 1066 00000010 00000000        DCD              Dummy_Handler ;04:(reserved)
- 1067 00000014 00000000        DCD              Dummy_Handler ;05:(reserved)
- 1068 00000018 00000000        DCD              Dummy_Handler ;06:(reserved)
- 1069 0000001C 00000000        DCD              Dummy_Handler ;07:(reserved)
- 1070 00000020 00000000        DCD              Dummy_Handler ;08:(reserved)
- 1071 00000024 00000000        DCD              Dummy_Handler ;09:(reserved)
- 1072 00000028 00000000        DCD              Dummy_Handler ;10:(reserved)
- 1073 0000002C 00000000        DCD              Dummy_Handler ;11:SVCall (super
+ 1071 00000010 00000000        DCD              Dummy_Handler ;04:(reserved)
+ 1072 00000014 00000000        DCD              Dummy_Handler ;05:(reserved)
+ 1073 00000018 00000000        DCD              Dummy_Handler ;06:(reserved)
+ 1074 0000001C 00000000        DCD              Dummy_Handler ;07:(reserved)
+ 1075 00000020 00000000        DCD              Dummy_Handler ;08:(reserved)
+ 1076 00000024 00000000        DCD              Dummy_Handler ;09:(reserved)
+ 1077 00000028 00000000        DCD              Dummy_Handler ;10:(reserved)
+ 1078 0000002C 00000000        DCD              Dummy_Handler ;11:SVCall (super
                                                             visor call)
- 1074 00000030 00000000        DCD              Dummy_Handler ;12:(reserved)
- 1075 00000034 00000000        DCD              Dummy_Handler ;13:(reserved)
- 1076 00000038 00000000        DCD              Dummy_Handler ;14:PendSV (Penda
+ 1079 00000030 00000000        DCD              Dummy_Handler ;12:(reserved)
+ 1080 00000034 00000000        DCD              Dummy_Handler ;13:(reserved)
+ 1081 00000038 00000000        DCD              Dummy_Handler ;14:PendSV (Penda
                                                             bleSrvReq)
- 1077 0000003C         ;   pendable request 
- 1078 0000003C         ;   for system service)
- 1079 0000003C 00000000        DCD              Dummy_Handler ;15:SysTick (syst
+ 1082 0000003C         ;   pendable request 
+ 1083 0000003C         ;   for system service)
+ 1084 0000003C 00000000        DCD              Dummy_Handler ;15:SysTick (syst
                                                             em tick timer)
- 1080 00000040 00000000        DCD              Dummy_Handler ;16:DMA channel 0
+ 1085 00000040 00000000        DCD              Dummy_Handler ;16:DMA channel 0
                                                              transfer 
- 1081 00000044         ;   complete/error
- 1082 00000044 00000000        DCD              Dummy_Handler ;17:DMA channel 1
+ 1086 00000044         ;   complete/error
+ 1087 00000044 00000000        DCD              Dummy_Handler ;17:DMA channel 1
                                                              transfer
- 1083 00000048         ;   complete/error
- 1084 00000048 00000000        DCD              Dummy_Handler ;18:DMA channel 2
+ 1088 00000048         ;   complete/error
+ 1089 00000048 00000000        DCD              Dummy_Handler ;18:DMA channel 2
                                                              transfer
- 1085 0000004C         ;   complete/error
- 1086 0000004C 00000000        DCD              Dummy_Handler ;19:DMA channel 3
+ 1090 0000004C         ;   complete/error
+ 1091 0000004C 00000000        DCD              Dummy_Handler ;19:DMA channel 3
                                                              transfer
- 1087 00000050         ;   complete/error
- 1088 00000050 00000000        DCD              Dummy_Handler ;20:(reserved)
- 1089 00000054 00000000        DCD              Dummy_Handler ;21:FTFA command 
-                                                            complete/
- 1090 00000058         ;   read collision
+ 1092 00000050         ;   complete/error
 
 
 
 ARM Macro Assembler    Page 25 Program Title for Listing Header Goes Here
 
 
- 1091 00000058 00000000        DCD              Dummy_Handler ;22:low-voltage d
+ 1093 00000050 00000000        DCD              Dummy_Handler ;20:(reserved)
+ 1094 00000054 00000000        DCD              Dummy_Handler ;21:FTFA command 
+                                                            complete/
+ 1095 00000058         ;   read collision
+ 1096 00000058 00000000        DCD              Dummy_Handler ;22:low-voltage d
                                                             etect;
- 1092 0000005C         ;   low-voltage warning
- 1093 0000005C 00000000        DCD              Dummy_Handler ;23:low leakage w
+ 1097 0000005C         ;   low-voltage warning
+ 1098 0000005C 00000000        DCD              Dummy_Handler ;23:low leakage w
                                                             akeup
- 1094 00000060 00000000        DCD              Dummy_Handler ;24:I2C0
- 1095 00000064 00000000        DCD              Dummy_Handler ;25:(reserved)
- 1096 00000068 00000000        DCD              Dummy_Handler ;26:SPI0
- 1097 0000006C 00000000        DCD              Dummy_Handler ;27:(reserved)
- 1098 00000070 00000000        DCD              Dummy_Handler ;28:UART0 (status
+ 1099 00000060 00000000        DCD              Dummy_Handler ;24:I2C0
+ 1100 00000064 00000000        DCD              Dummy_Handler ;25:(reserved)
+ 1101 00000068 00000000        DCD              Dummy_Handler ;26:SPI0
+ 1102 0000006C 00000000        DCD              Dummy_Handler ;27:(reserved)
+ 1103 00000070 00000000        DCD              Dummy_Handler ;28:UART0 (status
                                                             ; error)
- 1099 00000074 00000000        DCD              Dummy_Handler ;29:(reserved)
- 1100 00000078 00000000        DCD              Dummy_Handler ;30:(reserved)
- 1101 0000007C 00000000        DCD              Dummy_Handler ;31:ADC0
- 1102 00000080 00000000        DCD              Dummy_Handler ;32:CMP0
- 1103 00000084 00000000        DCD              Dummy_Handler ;33:TPM0
- 1104 00000088 00000000        DCD              Dummy_Handler ;34:TPM1
- 1105 0000008C 00000000        DCD              Dummy_Handler ;35:(reserved)
- 1106 00000090 00000000        DCD              Dummy_Handler ;36:RTC (alarm)
- 1107 00000094 00000000        DCD              Dummy_Handler ;37:RTC (seconds)
+ 1104 00000074 00000000        DCD              Dummy_Handler ;29:(reserved)
+ 1105 00000078 00000000        DCD              Dummy_Handler ;30:(reserved)
+ 1106 0000007C 00000000        DCD              Dummy_Handler ;31:ADC0
+ 1107 00000080 00000000        DCD              Dummy_Handler ;32:CMP0
+ 1108 00000084 00000000        DCD              Dummy_Handler ;33:TPM0
+ 1109 00000088 00000000        DCD              Dummy_Handler ;34:TPM1
+ 1110 0000008C 00000000        DCD              Dummy_Handler ;35:(reserved)
+ 1111 00000090 00000000        DCD              Dummy_Handler ;36:RTC (alarm)
+ 1112 00000094 00000000        DCD              Dummy_Handler ;37:RTC (seconds)
                                                             
- 1108 00000098 00000000        DCD              Dummy_Handler ;38:PIT
- 1109 0000009C 00000000        DCD              Dummy_Handler ;39:(reserved)
- 1110 000000A0 00000000        DCD              Dummy_Handler ;40:(reserved)
- 1111 000000A4 00000000        DCD              Dummy_Handler ;41:DAC0
- 1112 000000A8 00000000        DCD              Dummy_Handler ;42:TSI0
- 1113 000000AC 00000000        DCD              Dummy_Handler ;43:MCG
- 1114 000000B0 00000000        DCD              Dummy_Handler ;44:LPTMR0
- 1115 000000B4 00000000        DCD              Dummy_Handler ;45:(reserved)
- 1116 000000B8 00000000        DCD              Dummy_Handler ;46:PORTA
- 1117 000000BC 00000000        DCD              Dummy_Handler ;47:PORTB
- 1118 000000C0         __Vectors_End
- 1119 000000C0 000000C0 
+ 1113 00000098 00000000        DCD              Dummy_Handler ;38:PIT
+ 1114 0000009C 00000000        DCD              Dummy_Handler ;39:(reserved)
+ 1115 000000A0 00000000        DCD              Dummy_Handler ;40:(reserved)
+ 1116 000000A4 00000000        DCD              Dummy_Handler ;41:DAC0
+ 1117 000000A8 00000000        DCD              Dummy_Handler ;42:TSI0
+ 1118 000000AC 00000000        DCD              Dummy_Handler ;43:MCG
+ 1119 000000B0 00000000        DCD              Dummy_Handler ;44:LPTMR0
+ 1120 000000B4 00000000        DCD              Dummy_Handler ;45:(reserved)
+ 1121 000000B8 00000000        DCD              Dummy_Handler ;46:PORTA
+ 1122 000000BC 00000000        DCD              Dummy_Handler ;47:PORTB
+ 1123 000000C0         __Vectors_End
+ 1124 000000C0 000000C0 
                        __Vectors_Size
                                EQU              __Vectors_End - __Vectors
- 1120 000000C0                 ALIGN
- 1121 000000C0         ;*******************************************************
+ 1125 000000C0                 ALIGN
+ 1126 000000C0         ;*******************************************************
                        *********
- 1122 000000C0         ;Constants
- 1123 000000C0                 AREA             MyConst,DATA,READONLY
- 1124 00000000         ;>>>>> begin constants here <<<<<
- 1125 00000000 54 79 70 
+ 1127 000000C0         ;Constants
+ 1128 000000C0                 AREA             MyConst,DATA,READONLY
+ 1129 00000000         ;>>>>> begin constants here <<<<<
+ 1130 00000000 54 79 70 
               65 20 71 
               75 65 75 
               65 20 63 
@@ -1619,23 +1623,23 @@ ARM Macro Assembler    Page 25 Program Title for Listing Header Goes Here
                                DCB              "Type queue command (D,E,H,P,S)
 :",0 
                                                             ;
- 1126 00000020 53 75 63 
-              63 65 73 
-              73 3A 20 
-              00       SuccessPrompt
 
 
 
 ARM Macro Assembler    Page 26 Program Title for Listing Header Goes Here
 
 
+ 1131 00000020 53 75 63 
+              63 65 73 
+              73 3A 20 
+              00       SuccessPrompt
                                DCB              "Success: ",0
- 1127 0000002A 46 61 69 
+ 1132 0000002A 46 61 69 
               6C 75 72 
               65 3A 20 
               00       FailurePrompt
                                DCB              "Failure: ",0
- 1128 00000034 43 68 61 
+ 1133 00000034 43 68 61 
               72 61 63 
               74 65 72 
               20 74 6F 
@@ -1644,7 +1648,7 @@ ARM Macro Assembler    Page 26 Program Title for Listing Header Goes Here
               75 65 3A 
               20 00    EnqueuePrompt
                                DCB              "Character to enqueue: ",0
- 1129 0000004B 44 20 28 
+ 1134 0000004B 44 20 28 
               64 65 71 
               75 65 75 
               65 29 2C 
@@ -1666,46 +1670,46 @@ ARM Macro Assembler    Page 26 Program Title for Listing Header Goes Here
               00       HelpPrompt
                                DCB              "D (dequeue), E (enqueue), H (h
 elp), P (print), S (status)",0
- 1130 00000085 53 74 61 
+ 1135 00000085 53 74 61 
               74 75 73 
               3A 20 00 StatusPrompt
                                DCB              "Status: ",0
- 1131 0000008E 49 6E 3D 
+ 1136 0000008E 49 6E 3D 
               30 78 00 PrintInHex
                                DCB              "In=0x",0
- 1132 00000094 4F 75 74 
+ 1137 00000094 4F 75 74 
               3D 30 78 
               00       PrintOutHex
                                DCB              "Out=0x",0
- 1133 0000009B 4E 75 6D 
+ 1138 0000009B 4E 75 6D 
               3D 00    PrintNum
                                DCB              "Num=",0
- 1134 000000A0 20 20 20 
+ 1139 000000A0 20 20 20 
               00       Spaces  DCB              "   ",0
- 1135 000000A4         ;>>>>>   end constants here <<<<<
- 1136 000000A4                 ALIGN
- 1137 000000A4         ;*******************************************************
-                       *********
- 1138 000000A4         ;Variables
- 1139 000000A4                 AREA             MyData,DATA,READWRITE
+ 1140 000000A4         ;>>>>>   end constants here <<<<<
+ 1141 000000A4                 ALIGN
 
 
 
 ARM Macro Assembler    Page 27 Program Title for Listing Header Goes Here
 
 
- 1140 00000000         ;Queue structures
- 1141 00000000 00 00 00 
+ 1142 000000A4         ;*******************************************************
+                       *********
+ 1143 000000A4         ;Variables
+ 1144 000000A4                 AREA             MyData,DATA,READWRITE
+ 1145 00000000         ;Queue structures
+ 1146 00000000 00 00 00 
               00       QBuffer SPACE            Q_BUF_SZ
- 1142 00000004 00 00 00 
+ 1147 00000004 00 00 00 
               00 00 00 
               00 00 00 
               00 00 00 
               00 00 00 
               00 00 00 QRecord SPACE            Q_REC_SZ
- 1143 00000016         ;>>>>> begin variables here <<<<<
- 1144 00000016         
- 1145 00000016 00 00 00 
+ 1148 00000016         ;>>>>> begin variables here <<<<<
+ 1149 00000016         
+ 1150 00000016 00 00 00 
               00 00 00 
               00 00 00 
               00 00 00 
@@ -1732,10 +1736,10 @@ ARM Macro Assembler    Page 27 Program Title for Listing Header Goes Here
               00 00 00 
               00 00 00 
               00       string  SPACE            MAX_STRING
- 1146 00000065 00 00   putUvar SPACE            2
- 1147 00000067         ;>>>>>   end variables here <<<<<
- 1148 00000067 00              ALIGN
- 1149 00000068                 END
+ 1151 00000065 00 00   putUvar SPACE            2
+ 1152 00000067         ;>>>>>   end variables here <<<<<
+ 1153 00000067 00              ALIGN
+ 1154 00000068                 END
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M0+ --apcs=inter
 work --depend=.\objects\lab07src.d -o.\objects\lab07src.o -I.\RTE\_Target_1 -IC
 :\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include -IC:\Keil_v5\ARM
@@ -1748,30 +1752,38 @@ s
 ARM Macro Assembler    Page 1 Alphabetic symbol ordering
 Relocatable symbols
 
-ConvertToAF 0000029E
+ConvertToAF 000002A0
 
 Symbol: ConvertToAF
    Definitions
-      At line 783 in file lab07src.s
+      At line 788 in file lab07src.s
    Uses
-      At line 777 in file lab07src.s
+      At line 782 in file lab07src.s
 Comment: ConvertToAF used once
-DIV10 000002C4
+DIV10 000002C6
 
 Symbol: DIV10
    Definitions
-      At line 858 in file lab07src.s
+      At line 863 in file lab07src.s
    Uses
-      At line 871 in file lab07src.s
+      At line 876 in file lab07src.s
 Comment: DIV10 used once
-DIVU 000002FA
+DIVU 000002FC
 
 Symbol: DIVU
    Definitions
-      At line 896 in file lab07src.s
+      At line 901 in file lab07src.s
    Uses
-      At line 863 in file lab07src.s
+      At line 868 in file lab07src.s
 Comment: DIVU used once
+DeqWrap 00000214
+
+Symbol: DeqWrap
+   Definitions
+      At line 632 in file lab07src.s
+   Uses
+      At line 626 in file lab07src.s
+Comment: DeqWrap used once
 Dequeue 000001F4
 
 Symbol: Dequeue
@@ -1780,132 +1792,131 @@ Symbol: Dequeue
    Uses
       At line 257 in file lab07src.s
 Comment: Dequeue used once
-DequeueEnd 00000236
+DivB0 00000320
 
-Symbol: DequeueEnd
+Symbol: DivB0
    Definitions
-      At line 651 in file lab07src.s
+      At line 933 in file lab07src.s
    Uses
-      At line 637 in file lab07src.s
-      At line 648 in file lab07src.s
+      At line 906 in file lab07src.s
+Comment: DivB0 used once
+EndDeqSuccess 00000228
 
-DequeueFailed 00000226
-
-Symbol: DequeueFailed
+Symbol: EndDeqSuccess
    Definitions
-      At line 640 in file lab07src.s
+      At line 646 in file lab07src.s
    Uses
-      At line 607 in file lab07src.s
-Comment: DequeueFailed used once
-DequeueSuccess 00000216
+      At line 630 in file lab07src.s
+Comment: EndDeqSuccess used once
+EndDeqUnSuccess 00000218
 
-Symbol: DequeueSuccess
-   Definitions
-      At line 631 in file lab07src.s
-   Uses
-      At line 623 in file lab07src.s
-Comment: DequeueSuccess used once
-DequeueWrapBuffer 00000212
-
+Symbol: EndDeqUnSuccess
 
 
 
 ARM Macro Assembler    Page 2 Alphabetic symbol ordering
 Relocatable symbols
 
-Symbol: DequeueWrapBuffer
    Definitions
-      At line 626 in file lab07src.s
+      At line 637 in file lab07src.s
    Uses
-      At line 620 in file lab07src.s
-Comment: DequeueWrapBuffer used once
-DivB0 0000031E
-
-Symbol: DivB0
-   Definitions
-      At line 928 in file lab07src.s
-   Uses
-      At line 901 in file lab07src.s
-Comment: DivB0 used once
-EndDivu 0000032C
+      At line 608 in file lab07src.s
+Comment: EndDeqUnSuccess used once
+EndDivu 0000032E
 
 Symbol: EndDivu
    Definitions
-      At line 936 in file lab07src.s
+      At line 941 in file lab07src.s
    Uses
-      At line 926 in file lab07src.s
+      At line 931 in file lab07src.s
 Comment: EndDivu used once
-EndEnqSuccess 00000272
-
-Symbol: EndEnqSuccess
-   Definitions
-      At line 722 in file lab07src.s
-   Uses
-      At line 704 in file lab07src.s
-      At line 710 in file lab07src.s
-
-EndEnqUnSuccess 00000262
-
-Symbol: EndEnqUnSuccess
-   Definitions
-      At line 714 in file lab07src.s
-   Uses
-      At line 687 in file lab07src.s
-Comment: EndEnqUnSuccess used once
-EndForHex 000002B0
+EndForHex 000002B2
 
 Symbol: EndForHex
    Definitions
-      At line 798 in file lab07src.s
+      At line 803 in file lab07src.s
    Uses
-      At line 765 in file lab07src.s
-      At line 781 in file lab07src.s
+      At line 770 in file lab07src.s
+      At line 786 in file lab07src.s
 
-EndPutNum 000002F8
+EndProgramDeq 00000236
+
+Symbol: EndProgramDeq
+   Definitions
+      At line 653 in file lab07src.s
+   Uses
+      At line 644 in file lab07src.s
+Comment: EndProgramDeq used once
+EndPutNum 000002FA
 
 Symbol: EndPutNum
    Definitions
-      At line 890 in file lab07src.s
+      At line 895 in file lab07src.s
    Uses
-      At line 879 in file lab07src.s
+      At line 884 in file lab07src.s
 Comment: EndPutNum used once
-EndPutNumU 000002DC
+EndPutNumU 000002DE
 
 Symbol: EndPutNumU
+   Definitions
+      At line 878 in file lab07src.s
+   Uses
+      At line 864 in file lab07src.s
+Comment: EndPutNumU used once
+Enqueue 0000023A
+
+Symbol: Enqueue
+   Definitions
+      At line 683 in file lab07src.s
+   Uses
+      At line 294 in file lab07src.s
+Comment: Enqueue used once
+EnqueueEnd 00000280
+
+Symbol: EnqueueEnd
+   Definitions
+      At line 734 in file lab07src.s
 
 
 
 ARM Macro Assembler    Page 3 Alphabetic symbol ordering
 Relocatable symbols
 
-   Definitions
-      At line 873 in file lab07src.s
    Uses
-      At line 859 in file lab07src.s
-Comment: EndPutNumU used once
-EndSubEnq 00000280
+      At line 731 in file lab07src.s
+Comment: EnqueueEnd used once
+EnqueueFailed 00000270
 
-Symbol: EndSubEnq
+Symbol: EnqueueFailed
    Definitions
-      At line 730 in file lab07src.s
+      At line 725 in file lab07src.s
    Uses
-      At line 720 in file lab07src.s
-Comment: EndSubEnq used once
-Enqueue 0000023A
+      At line 689 in file lab07src.s
+Comment: EnqueueFailed used once
+EnqueueSuccess 00000262
 
-Symbol: Enqueue
+Symbol: EnqueueSuccess
    Definitions
-      At line 655 in file lab07src.s
+      At line 717 in file lab07src.s
    Uses
-      At line 294 in file lab07src.s
-Comment: Enqueue used once
-ForHex 00000286
+      At line 708 in file lab07src.s
+      At line 714 in file lab07src.s
+
+EnqueueWrapBuffer 0000025C
+
+Symbol: EnqueueWrapBuffer
+   Definitions
+      At line 711 in file lab07src.s
+   Uses
+      At line 707 in file lab07src.s
+Comment: EnqueueWrapBuffer used once
+ForHex 00000288
 
 Symbol: ForHex
    Definitions
-      At line 763 in file lab07src.s
+      At line 768 in file lab07src.s
    Uses
-      At line 795 in file lab07src.s
+      At line 800 in file lab07src.s
 Comment: ForHex used once
 GetChar 00000174
 
@@ -1930,6 +1941,12 @@ HandleConditions 00000022
 Symbol: HandleConditions
    Definitions
       At line 231 in file lab07src.s
+
+
+
+ARM Macro Assembler    Page 4 Alphabetic symbol ordering
+Relocatable symbols
+
    Uses
       At line 227 in file lab07src.s
 Comment: HandleConditions used once
@@ -1937,12 +1954,6 @@ IgnoreChar 00000018
 
 Symbol: IgnoreChar
    Definitions
-
-
-
-ARM Macro Assembler    Page 4 Alphabetic symbol ordering
-Relocatable symbols
-
       At line 217 in file lab07src.s
    Uses
       At line 247 in file lab07src.s
@@ -1955,11 +1966,11 @@ Symbol: InitQueue
    Uses
       At line 210 in file lab07src.s
 Comment: InitQueue used once
-Init_UART0_Polling 00000330
+Init_UART0_Polling 00000332
 
 Symbol: Init_UART0_Polling
    Definitions
-      At line 945 in file lab07src.s
+      At line 950 in file lab07src.s
    Uses
       At line 205 in file lab07src.s
 Comment: Init_UART0_Polling used once
@@ -1979,11 +1990,11 @@ Symbol: MyCode
    Uses
       None
 Comment: MyCode unused
-NewLine 0000039C
+NewLine 0000039E
 
 Symbol: NewLine
    Definitions
-      At line 1034 in file lab07src.s
+      At line 1039 in file lab07src.s
    Uses
       At line 213 in file lab07src.s
       At line 251 in file lab07src.s
@@ -1996,18 +2007,18 @@ Symbol: NewLine
       At line 378 in file lab07src.s
       At line 515 in file lab07src.s
 
+
+
+ARM Macro Assembler    Page 5 Alphabetic symbol ordering
+Relocatable symbols
+
+
 PollRx 0000017A
 
 Symbol: PollRx
    Definitions
       At line 459 in file lab07src.s
    Uses
-
-
-
-ARM Macro Assembler    Page 5 Alphabetic symbol ordering
-Relocatable symbols
-
       At line 461 in file lab07src.s
 Comment: PollRx used once
 PollTx 00000168
@@ -2018,13 +2029,13 @@ Symbol: PollTx
    Uses
       At line 442 in file lab07src.s
 Comment: PollTx used once
-PrintChar 000002E4
+PrintChar 000002E6
 
 Symbol: PrintChar
    Definitions
-      At line 877 in file lab07src.s
+      At line 882 in file lab07src.s
    Uses
-      At line 888 in file lab07src.s
+      At line 893 in file lab07src.s
 Comment: PrintChar used once
 PrintNext 000000D8
 
@@ -2035,13 +2046,13 @@ Symbol: PrintNext
       At line 354 in file lab07src.s
       At line 357 in file lab07src.s
 
-PrintX 000002A0
+PrintX 000002A2
 
 Symbol: PrintX
    Definitions
-      At line 786 in file lab07src.s
+      At line 791 in file lab07src.s
    Uses
-      At line 779 in file lab07src.s
+      At line 784 in file lab07src.s
 Comment: PrintX used once
 PutChar 00000162
 
@@ -2060,46 +2071,46 @@ Symbol: PutChar
       At line 330 in file lab07src.s
       At line 345 in file lab07src.s
       At line 360 in file lab07src.s
-      At line 369 in file lab07src.s
-      At line 482 in file lab07src.s
-      At line 500 in file lab07src.s
-      At line 512 in file lab07src.s
-      At line 537 in file lab07src.s
-      At line 789 in file lab07src.s
-      At line 874 in file lab07src.s
 
 
 
 ARM Macro Assembler    Page 6 Alphabetic symbol ordering
 Relocatable symbols
 
-      At line 885 in file lab07src.s
-      At line 1038 in file lab07src.s
-      At line 1041 in file lab07src.s
+      At line 369 in file lab07src.s
+      At line 482 in file lab07src.s
+      At line 500 in file lab07src.s
+      At line 512 in file lab07src.s
+      At line 537 in file lab07src.s
+      At line 794 in file lab07src.s
+      At line 879 in file lab07src.s
+      At line 890 in file lab07src.s
+      At line 1043 in file lab07src.s
+      At line 1046 in file lab07src.s
 
-PutNumHex 00000282
+PutNumHex 00000284
 
 Symbol: PutNumHex
    Definitions
-      At line 742 in file lab07src.s
+      At line 747 in file lab07src.s
    Uses
       At line 404 in file lab07src.s
       At line 414 in file lab07src.s
 
-PutNumU 000002C0
+PutNumU 000002C2
 
 Symbol: PutNumU
    Definitions
-      At line 854 in file lab07src.s
+      At line 859 in file lab07src.s
    Uses
       At line 424 in file lab07src.s
-      At line 845 in file lab07src.s
+      At line 850 in file lab07src.s
 
-PutNumUB 000002B2
+PutNumUB 000002B4
 
 Symbol: PutNumUB
    Definitions
-      At line 817 in file lab07src.s
+      At line 822 in file lab07src.s
    Uses
       None
 Comment: PutNumUB unused
@@ -2126,25 +2137,25 @@ Symbol: PutStringSB
 
 Quit 000000F8
 
+
+
+ARM Macro Assembler    Page 7 Alphabetic symbol ordering
+Relocatable symbols
+
+
 Symbol: Quit
    Definitions
       At line 359 in file lab07src.s
    Uses
       At line 339 in file lab07src.s
 Comment: Quit used once
-
-
-
-ARM Macro Assembler    Page 7 Alphabetic symbol ordering
-Relocatable symbols
-
-Remainder 0000030C
+Remainder 0000030E
 
 Symbol: Remainder
    Definitions
-      At line 916 in file lab07src.s
+      At line 921 in file lab07src.s
    Uses
-      At line 908 in file lab07src.s
+      At line 913 in file lab07src.s
 Comment: Remainder used once
 Reset_Handler 00000000
 
@@ -2153,7 +2164,7 @@ Symbol: Reset_Handler
       At line 194 in file lab07src.s
    Uses
       At line 189 in file lab07src.s
-      At line 1063 in file lab07src.s
+      At line 1068 in file lab07src.s
 
 Restart 0000000E
 
@@ -2191,34 +2202,26 @@ Symbol: UnsuccessD
 Comment: UnsuccessD used once
 UnsuccessE 0000009E
 
+
+
+ARM Macro Assembler    Page 8 Alphabetic symbol ordering
+Relocatable symbols
+
+
 Symbol: UnsuccessE
    Definitions
       At line 304 in file lab07src.s
    Uses
       At line 295 in file lab07src.s
 Comment: UnsuccessE used once
-
-
-
-ARM Macro Assembler    Page 8 Alphabetic symbol ordering
-Relocatable symbols
-
-WhileLoopD 00000302
+WhileLoopD 00000304
 
 Symbol: WhileLoopD
    Definitions
-      At line 906 in file lab07src.s
+      At line 911 in file lab07src.s
    Uses
-      At line 913 in file lab07src.s
+      At line 918 in file lab07src.s
 Comment: WhileLoopD used once
-WrapCir 0000025C
-
-Symbol: WrapCir
-   Definitions
-      At line 707 in file lab07src.s
-   Uses
-      At line 703 in file lab07src.s
-Comment: WrapCir used once
 WrapQueue 000000F4
 
 Symbol: WrapQueue
@@ -2262,13 +2265,13 @@ Symbol: handleE
    Uses
       At line 236 in file lab07src.s
 Comment: handleE used once
+handleH 000000B0
 
 
 
 ARM Macro Assembler    Page 9 Alphabetic symbol ordering
 Relocatable symbols
 
-handleH 000000B0
 
 Symbol: handleH
    Definitions
@@ -2327,7 +2330,7 @@ RESET 00000000
 
 Symbol: RESET
    Definitions
-      At line 1053 in file lab07src.s
+      At line 1058 in file lab07src.s
    Uses
       None
 Comment: RESET unused
@@ -2335,19 +2338,19 @@ __Vectors 00000000
 
 Symbol: __Vectors
    Definitions
-      At line 1060 in file lab07src.s
+      At line 1065 in file lab07src.s
    Uses
-      At line 1054 in file lab07src.s
-      At line 1119 in file lab07src.s
+      At line 1059 in file lab07src.s
+      At line 1124 in file lab07src.s
 
 __Vectors_End 000000C0
 
 Symbol: __Vectors_End
    Definitions
-      At line 1118 in file lab07src.s
+      At line 1123 in file lab07src.s
    Uses
-      At line 1055 in file lab07src.s
-      At line 1119 in file lab07src.s
+      At line 1060 in file lab07src.s
+      At line 1124 in file lab07src.s
 
 3 symbols
 
@@ -2360,7 +2363,7 @@ EnqueuePrompt 00000034
 
 Symbol: EnqueuePrompt
    Definitions
-      At line 1128 in file lab07src.s
+      At line 1133 in file lab07src.s
    Uses
       At line 284 in file lab07src.s
 Comment: EnqueuePrompt used once
@@ -2368,7 +2371,7 @@ FailurePrompt 0000002A
 
 Symbol: FailurePrompt
    Definitions
-      At line 1127 in file lab07src.s
+      At line 1132 in file lab07src.s
    Uses
       At line 272 in file lab07src.s
       At line 307 in file lab07src.s
@@ -2377,7 +2380,7 @@ HelpPrompt 0000004B
 
 Symbol: HelpPrompt
    Definitions
-      At line 1129 in file lab07src.s
+      At line 1134 in file lab07src.s
    Uses
       At line 318 in file lab07src.s
 Comment: HelpPrompt used once
@@ -2385,7 +2388,7 @@ MyConst 00000000
 
 Symbol: MyConst
    Definitions
-      At line 1123 in file lab07src.s
+      At line 1128 in file lab07src.s
    Uses
       None
 Comment: MyConst unused
@@ -2393,7 +2396,7 @@ PrintInHex 0000008E
 
 Symbol: PrintInHex
    Definitions
-      At line 1131 in file lab07src.s
+      At line 1136 in file lab07src.s
    Uses
       At line 399 in file lab07src.s
 Comment: PrintInHex used once
@@ -2401,7 +2404,7 @@ PrintNum 0000009B
 
 Symbol: PrintNum
    Definitions
-      At line 1133 in file lab07src.s
+      At line 1138 in file lab07src.s
    Uses
       At line 419 in file lab07src.s
 Comment: PrintNum used once
@@ -2409,7 +2412,7 @@ PrintOutHex 00000094
 
 Symbol: PrintOutHex
    Definitions
-      At line 1132 in file lab07src.s
+      At line 1137 in file lab07src.s
    Uses
       At line 409 in file lab07src.s
 Comment: PrintOutHex used once
@@ -2423,7 +2426,7 @@ Relocatable symbols
 
 Symbol: PutPrompt
    Definitions
-      At line 1125 in file lab07src.s
+      At line 1130 in file lab07src.s
    Uses
       At line 214 in file lab07src.s
 Comment: PutPrompt used once
@@ -2431,7 +2434,7 @@ Spaces 000000A0
 
 Symbol: Spaces
    Definitions
-      At line 1134 in file lab07src.s
+      At line 1139 in file lab07src.s
    Uses
       At line 397 in file lab07src.s
       At line 407 in file lab07src.s
@@ -2441,7 +2444,7 @@ StatusPrompt 00000085
 
 Symbol: StatusPrompt
    Definitions
-      At line 1130 in file lab07src.s
+      At line 1135 in file lab07src.s
    Uses
       At line 372 in file lab07src.s
 Comment: StatusPrompt used once
@@ -2449,7 +2452,7 @@ SuccessPrompt 00000020
 
 Symbol: SuccessPrompt
    Definitions
-      At line 1126 in file lab07src.s
+      At line 1131 in file lab07src.s
    Uses
       At line 262 in file lab07src.s
       At line 297 in file lab07src.s
@@ -2465,7 +2468,7 @@ MyData 00000000
 
 Symbol: MyData
    Definitions
-      At line 1139 in file lab07src.s
+      At line 1144 in file lab07src.s
    Uses
       None
 Comment: MyData unused
@@ -2473,7 +2476,7 @@ QBuffer 00000000
 
 Symbol: QBuffer
    Definitions
-      At line 1141 in file lab07src.s
+      At line 1146 in file lab07src.s
    Uses
       At line 253 in file lab07src.s
       At line 287 in file lab07src.s
@@ -2484,7 +2487,7 @@ QRecord 00000004
 
 Symbol: QRecord
    Definitions
-      At line 1142 in file lab07src.s
+      At line 1147 in file lab07src.s
    Uses
       At line 254 in file lab07src.s
       At line 265 in file lab07src.s
@@ -2500,16 +2503,16 @@ putUvar 00000065
 
 Symbol: putUvar
    Definitions
-      At line 1146 in file lab07src.s
+      At line 1151 in file lab07src.s
    Uses
-      At line 866 in file lab07src.s
-      At line 877 in file lab07src.s
+      At line 871 in file lab07src.s
+      At line 882 in file lab07src.s
 
 string 00000016
 
 Symbol: string
    Definitions
-      At line 1145 in file lab07src.s
+      At line 1150 in file lab07src.s
    Uses
       None
 Comment: string unused
@@ -3640,8 +3643,8 @@ Symbol: BUF_PAST
    Uses
       At line 351 in file lab07src.s
       At line 572 in file lab07src.s
-      At line 618 in file lab07src.s
-      At line 701 in file lab07src.s
+      At line 624 in file lab07src.s
+      At line 705 in file lab07src.s
 
 BUF_SIZE 00000010
 
@@ -3650,7 +3653,7 @@ Symbol: BUF_SIZE
       At line 33 in file lab07src.s
    Uses
       At line 573 in file lab07src.s
-      At line 684 in file lab07src.s
+      At line 687 in file lab07src.s
 
 BUF_STRT 00000008
 
@@ -3660,8 +3663,8 @@ Symbol: BUF_STRT
    Uses
       At line 356 in file lab07src.s
       At line 569 in file lab07src.s
-      At line 627 in file lab07src.s
-      At line 708 in file lab07src.s
+      At line 633 in file lab07src.s
+      At line 712 in file lab07src.s
 
 BYTE_BITS 00000008
 
@@ -4418,7 +4421,7 @@ Symbol: CR
    Definitions
       At line 24 in file lab07src.s
    Uses
-      At line 1037 in file lab07src.s
+      At line 1042 in file lab07src.s
 Comment: CR used once
 DAC0_BASE 4003F000
 
@@ -6750,10 +6753,10 @@ Absolute symbols
    Uses
       At line 392 in file lab07src.s
       At line 567 in file lab07src.s
-      At line 690 in file lab07src.s
-      At line 694 in file lab07src.s
-      At line 700 in file lab07src.s
-      At line 709 in file lab07src.s
+      At line 691 in file lab07src.s
+      At line 696 in file lab07src.s
+      At line 704 in file lab07src.s
+      At line 713 in file lab07src.s
 
 IPSR_EXCEPTION_MASK 0000003F
 
@@ -6801,7 +6804,7 @@ Symbol: LF
    Definitions
       At line 25 in file lab07src.s
    Uses
-      At line 1040 in file lab07src.s
+      At line 1045 in file lab07src.s
 Comment: LF used once
 LLW_IPR E000E404
 
@@ -6947,7 +6950,7 @@ Symbol: MAX_STRING
    Definitions
       At line 183 in file lab07src.s
    Uses
-      At line 1145 in file lab07src.s
+      At line 1150 in file lab07src.s
 Comment: MAX_STRING used once
 MCG_ATCVH 4006400A
 
@@ -7733,6 +7736,7 @@ Symbol: NULL
    Uses
       At line 514 in file lab07src.s
       At line 534 in file lab07src.s
+      At line 607 in file lab07src.s
 
 NUM_ENQD 00000011
 
@@ -7744,11 +7748,11 @@ Symbol: NUM_ENQD
       At line 394 in file lab07src.s
       At line 575 in file lab07src.s
       At line 605 in file lab07src.s
-      At line 612 in file lab07src.s
-      At line 614 in file lab07src.s
-      At line 683 in file lab07src.s
-      At line 696 in file lab07src.s
-      At line 698 in file lab07src.s
+      At line 618 in file lab07src.s
+      At line 620 in file lab07src.s
+      At line 686 in file lab07src.s
+      At line 699 in file lab07src.s
+      At line 701 in file lab07src.s
 
 NVIC_BASE E000E100
 
@@ -7781,9 +7785,9 @@ NVIC_ICER_OFFSET 00000080
 
 
 
-
 ARM Macro Assembler    Page 82 Alphabetic symbol ordering
 Absolute symbols
+
 
 Symbol: NVIC_ICER_OFFSET
    Definitions
@@ -7843,13 +7847,13 @@ Symbol: NVIC_IPR1_OFFSET
    Definitions
       At line 1417 in file MKL05Z4.s
    Uses
-      At line 1429 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 83 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1429 in file MKL05Z4.s
 Comment: NVIC_IPR1_OFFSET used once
 NVIC_IPR2 E000E408
 
@@ -7908,13 +7912,13 @@ Symbol: NVIC_IPR4_OFFSET
    Uses
       At line 1432 in file MKL05Z4.s
 Comment: NVIC_IPR4_OFFSET used once
-NVIC_IPR5 E000E414
 
 
 
 ARM Macro Assembler    Page 84 Alphabetic symbol ordering
 Absolute symbols
 
+NVIC_IPR5 E000E414
 
 Symbol: NVIC_IPR5
    Definitions
@@ -7973,13 +7977,13 @@ Symbol: NVIC_IPR7_OFFSET
 Comment: NVIC_IPR7_OFFSET used once
 NVIC_ISER E000E100
 
-Symbol: NVIC_ISER
 
 
 
 ARM Macro Assembler    Page 85 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: NVIC_ISER
    Definitions
       At line 1424 in file MKL05Z4.s
    Uses
@@ -8038,13 +8042,13 @@ NV_BACKKEY0_OFFSET 00000003
 Symbol: NV_BACKKEY0_OFFSET
    Definitions
       At line 1301 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 86 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
       At line 1315 in file MKL05Z4.s
 Comment: NV_BACKKEY0_OFFSET used once
 NV_BACKKEY1 00000402
@@ -8103,13 +8107,13 @@ Symbol: NV_BACKKEY2_KEY_SHIFT
    Uses
       None
 Comment: NV_BACKKEY2_KEY_SHIFT unused
-NV_BACKKEY2_OFFSET 00000001
 
 
 
 ARM Macro Assembler    Page 87 Alphabetic symbol ordering
 Absolute symbols
 
+NV_BACKKEY2_OFFSET 00000001
 
 Symbol: NV_BACKKEY2_OFFSET
    Definitions
@@ -8168,13 +8172,13 @@ Comment: NV_BACKKEY4_KEY_MASK unused
 NV_BACKKEY4_KEY_SHIFT 00000000
 
 Symbol: NV_BACKKEY4_KEY_SHIFT
-   Definitions
 
 
 
 ARM Macro Assembler    Page 88 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
       At line 1357 in file MKL05Z4.s
    Uses
       None
@@ -8233,13 +8237,13 @@ Symbol: NV_BACKKEY6_KEY_MASK
    Definitions
       At line 1348 in file MKL05Z4.s
    Uses
-      None
 
 
 
 ARM Macro Assembler    Page 89 Alphabetic symbol ordering
 Absolute symbols
 
+      None
 Comment: NV_BACKKEY6_KEY_MASK unused
 NV_BACKKEY6_KEY_SHIFT 00000000
 
@@ -8298,13 +8302,13 @@ Symbol: NV_BASE
       At line 1312 in file MKL05Z4.s
       At line 1313 in file MKL05Z4.s
       At line 1314 in file MKL05Z4.s
-      At line 1315 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 90 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1315 in file MKL05Z4.s
       At line 1316 in file MKL05Z4.s
       At line 1317 in file MKL05Z4.s
       At line 1318 in file MKL05Z4.s
@@ -8363,13 +8367,13 @@ Symbol: NV_FOPT_LPBOOT1_MASK
       At line 1404 in file MKL05Z4.s
    Uses
       None
-Comment: NV_FOPT_LPBOOT1_MASK unused
 
 
 
 ARM Macro Assembler    Page 91 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: NV_FOPT_LPBOOT1_MASK unused
 NV_FOPT_LPBOOT1_SHIFT 00000004
 
 Symbol: NV_FOPT_LPBOOT1_SHIFT
@@ -8428,13 +8432,13 @@ Symbol: NV_FPROT0
 Comment: NV_FPROT0 unused
 NV_FPROT0_OFFSET 0000000B
 
-Symbol: NV_FPROT0_OFFSET
 
 
 
 ARM Macro Assembler    Page 92 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: NV_FPROT0_OFFSET
    Definitions
       At line 1309 in file MKL05Z4.s
    Uses
@@ -8493,13 +8497,13 @@ NV_FPROT2 00000409
 Symbol: NV_FPROT2
    Definitions
       At line 1321 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 93 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
       None
 Comment: NV_FPROT2 unused
 NV_FPROT2_OFFSET 00000009
@@ -8558,13 +8562,13 @@ Symbol: NV_FPROT3_PROT_SHIFT
    Uses
       None
 Comment: NV_FPROT3_PROT_SHIFT unused
-NV_FSEC 0000040C
 
 
 
 ARM Macro Assembler    Page 94 Alphabetic symbol ordering
 Absolute symbols
 
+NV_FSEC 0000040C
 
 Symbol: NV_FSEC
    Definitions
@@ -8623,13 +8627,13 @@ Comment: NV_FSEC_MEEN_SHIFT unused
 NV_FSEC_OFFSET 0000000C
 
 Symbol: NV_FSEC_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 95 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
       At line 1310 in file MKL05Z4.s
    Uses
       At line 1324 in file MKL05Z4.s
@@ -8688,13 +8692,13 @@ Symbol: OSC_CR_ERCLKEN_MASK
    Definitions
       At line 1616 in file MKL05Z4.s
    Uses
-      None
 
 
 
 ARM Macro Assembler    Page 96 Alphabetic symbol ordering
 Absolute symbols
 
+      None
 Comment: OSC_CR_ERCLKEN_MASK unused
 OSC_CR_ERCLKEN_SHIFT 00000007
 
@@ -8756,9 +8760,9 @@ OSC_CR_SC4P_MASK 00000004
 
 
 
-
 ARM Macro Assembler    Page 97 Alphabetic symbol ordering
 Absolute symbols
+
 
 Symbol: OSC_CR_SC4P_MASK
    Definitions
@@ -8799,9 +8803,10 @@ Symbol: OUT_PTR
       At line 336 in file lab07src.s
       At line 393 in file lab07src.s
       At line 568 in file lab07src.s
-      At line 609 in file lab07src.s
-      At line 622 in file lab07src.s
+      At line 610 in file lab07src.s
       At line 628 in file lab07src.s
+      At line 634 in file lab07src.s
+      At line 654 in file lab07src.s
 
 PIT_BASE 40037000
 
@@ -8817,14 +8822,14 @@ Symbol: PIT_BASE
       At line 1643 in file MKL05Z4.s
       At line 1644 in file MKL05Z4.s
       At line 1645 in file MKL05Z4.s
-      At line 1646 in file MKL05Z4.s
-      At line 1647 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 98 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1646 in file MKL05Z4.s
+      At line 1647 in file MKL05Z4.s
       At line 1648 in file MKL05Z4.s
 
 PIT_CH0_BASE 40037100
@@ -8882,14 +8887,14 @@ Symbol: PIT_CVAL_OFFSET
       At line 1624 in file MKL05Z4.s
    Uses
       None
-Comment: PIT_CVAL_OFFSET unused
-PIT_IPR E000E414
 
 
 
 ARM Macro Assembler    Page 99 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: PIT_CVAL_OFFSET unused
+PIT_IPR E000E414
 
 Symbol: PIT_IPR
    Definitions
@@ -8947,14 +8952,14 @@ Symbol: PIT_LDVAL1_OFFSET
 Comment: PIT_LDVAL1_OFFSET used once
 PIT_LDVAL_OFFSET 00000000
 
-Symbol: PIT_LDVAL_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 100 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: PIT_LDVAL_OFFSET
+   Definitions
       At line 1623 in file MKL05Z4.s
    Uses
       None
@@ -9012,14 +9017,14 @@ PIT_MCR_FRZ_SHIFT 00000000
 Symbol: PIT_MCR_FRZ_SHIFT
    Definitions
       At line 1678 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 101 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: PIT_MCR_FRZ_SHIFT unused
 PIT_MCR_MDIS_MASK 00000002
 
@@ -9077,13 +9082,13 @@ Symbol: PIT_TCTRL1
    Uses
       None
 Comment: PIT_TCTRL1 unused
-PIT_TCTRL1_OFFSET 00000118
-
 
 
 
 ARM Macro Assembler    Page 102 Alphabetic symbol ordering
 Absolute symbols
+
+PIT_TCTRL1_OFFSET 00000118
 
 Symbol: PIT_TCTRL1_OFFSET
    Definitions
@@ -9142,14 +9147,14 @@ Comment: PIT_TCTRL_TIE_MASK unused
 PIT_TCTRL_TIE_SHIFT 00000001
 
 Symbol: PIT_TCTRL_TIE_SHIFT
-   Definitions
-      At line 1691 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 103 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1691 in file MKL05Z4.s
    Uses
       None
 Comment: PIT_TCTRL_TIE_SHIFT unused
@@ -9207,14 +9212,14 @@ Symbol: PIT_TFLG_TIF_SHIFT
    Definitions
       At line 1700 in file MKL05Z4.s
    Uses
-      None
-Comment: PIT_TFLG_TIF_SHIFT unused
 
 
 
 ARM Macro Assembler    Page 104 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: PIT_TFLG_TIF_SHIFT unused
 PIT_Vector 00000026
 
 Symbol: PIT_Vector
@@ -9272,14 +9277,14 @@ Symbol: PORTA_GPCHR
       At line 1772 in file MKL05Z4.s
    Uses
       None
-Comment: PORTA_GPCHR unused
-PORTA_GPCHR_OFFSET 00000084
 
 
 
 ARM Macro Assembler    Page 105 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: PORTA_GPCHR unused
+PORTA_GPCHR_OFFSET 00000084
 
 Symbol: PORTA_GPCHR_OFFSET
    Definitions
@@ -9337,14 +9342,14 @@ Symbol: PORTA_ISFR
 Comment: PORTA_ISFR unused
 PORTA_ISFR_OFFSET 000000A0
 
-Symbol: PORTA_ISFR_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 106 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: PORTA_ISFR_OFFSET
+   Definitions
       At line 1738 in file MKL05Z4.s
    Uses
       At line 1773 in file MKL05Z4.s
@@ -9402,14 +9407,14 @@ PORTA_PCR11_OFFSET 0000002C
 Symbol: PORTA_PCR11_OFFSET
    Definitions
       At line 1715 in file MKL05Z4.s
-   Uses
-      At line 1750 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 107 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 1750 in file MKL05Z4.s
 Comment: PORTA_PCR11_OFFSET used once
 PORTA_PCR12 40049030
 
@@ -9467,13 +9472,13 @@ Symbol: PORTA_PCR15
    Uses
       None
 Comment: PORTA_PCR15 unused
-PORTA_PCR15_OFFSET 0000003C
-
 
 
 
 ARM Macro Assembler    Page 108 Alphabetic symbol ordering
 Absolute symbols
+
+PORTA_PCR15_OFFSET 0000003C
 
 Symbol: PORTA_PCR15_OFFSET
    Definitions
@@ -9532,14 +9537,14 @@ Comment: PORTA_PCR18_OFFSET used once
 PORTA_PCR19 4004904C
 
 Symbol: PORTA_PCR19
-   Definitions
-      At line 1758 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 109 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1758 in file MKL05Z4.s
    Uses
       None
 Comment: PORTA_PCR19 unused
@@ -9597,14 +9602,14 @@ Symbol: PORTA_PCR21_OFFSET
    Definitions
       At line 1725 in file MKL05Z4.s
    Uses
-      At line 1760 in file MKL05Z4.s
-Comment: PORTA_PCR21_OFFSET used once
 
 
 
 ARM Macro Assembler    Page 110 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1760 in file MKL05Z4.s
+Comment: PORTA_PCR21_OFFSET used once
 PORTA_PCR22 40049058
 
 Symbol: PORTA_PCR22
@@ -9663,13 +9668,13 @@ Symbol: PORTA_PCR25
 Comment: PORTA_PCR25 unused
 PORTA_PCR25_OFFSET 00000064
 
-Symbol: PORTA_PCR25_OFFSET
-
 
 
 ARM Macro Assembler    Page 111 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PORTA_PCR25_OFFSET
    Definitions
       At line 1729 in file MKL05Z4.s
    Uses
@@ -9727,14 +9732,14 @@ PORTA_PCR29 40049074
 
 Symbol: PORTA_PCR29
    Definitions
-      At line 1768 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 112 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1768 in file MKL05Z4.s
+   Uses
       None
 Comment: PORTA_PCR29 unused
 PORTA_PCR29_OFFSET 00000074
@@ -9792,14 +9797,14 @@ Symbol: PORTA_PCR31_OFFSET
       At line 1735 in file MKL05Z4.s
    Uses
       At line 1770 in file MKL05Z4.s
-Comment: PORTA_PCR31_OFFSET used once
-PORTA_PCR3_OFFSET 0000000C
 
 
 
 ARM Macro Assembler    Page 113 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: PORTA_PCR31_OFFSET used once
+PORTA_PCR3_OFFSET 0000000C
 
 Symbol: PORTA_PCR3_OFFSET
    Definitions
@@ -9857,14 +9862,14 @@ Symbol: PORTA_PCR6_OFFSET
 Comment: PORTA_PCR6_OFFSET used once
 PORTA_PCR7 4004901C
 
-Symbol: PORTA_PCR7
-   Definitions
 
 
 
 ARM Macro Assembler    Page 114 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: PORTA_PCR7
+   Definitions
       At line 1746 in file MKL05Z4.s
    Uses
       None
@@ -9922,14 +9927,14 @@ PORTA_Vector 0000002E
 Symbol: PORTA_Vector
    Definitions
       At line 1589 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 115 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: PORTA_Vector unused
 PORTB_BASE 4004A000
 
@@ -9987,14 +9992,14 @@ Symbol: PORTB_GPCHR_OFFSET
    Definitions
       At line 1810 in file MKL05Z4.s
    Uses
-      At line 1845 in file MKL05Z4.s
-Comment: PORTB_GPCHR_OFFSET used once
 
 
 
 ARM Macro Assembler    Page 116 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1845 in file MKL05Z4.s
+Comment: PORTB_GPCHR_OFFSET used once
 PORTB_GPCLR 4004A080
 
 Symbol: PORTB_GPCLR
@@ -10053,13 +10058,13 @@ Symbol: PORTB_ISFR_OFFSET
 Comment: PORTB_ISFR_OFFSET used once
 PORTB_PCR0 4004A000
 
-Symbol: PORTB_PCR0
-
 
 
 ARM Macro Assembler    Page 117 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PORTB_PCR0
    Definitions
       At line 1812 in file MKL05Z4.s
    Uses
@@ -10079,7 +10084,7 @@ Symbol: PORTB_PCR1
    Definitions
       At line 1813 in file MKL05Z4.s
    Uses
-      At line 989 in file lab07src.s
+      At line 994 in file lab07src.s
 Comment: PORTB_PCR1 used once
 PORTB_PCR10 4004A028
 
@@ -10117,14 +10122,14 @@ PORTB_PCR12 4004A030
 
 Symbol: PORTB_PCR12
    Definitions
-      At line 1824 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 118 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1824 in file MKL05Z4.s
+   Uses
       None
 Comment: PORTB_PCR12 unused
 PORTB_PCR12_OFFSET 00000030
@@ -10182,14 +10187,14 @@ Symbol: PORTB_PCR15_OFFSET
       At line 1792 in file MKL05Z4.s
    Uses
       At line 1827 in file MKL05Z4.s
-Comment: PORTB_PCR15_OFFSET used once
-PORTB_PCR16 4004A040
 
 
 
 ARM Macro Assembler    Page 119 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: PORTB_PCR15_OFFSET used once
+PORTB_PCR16 4004A040
 
 Symbol: PORTB_PCR16
    Definitions
@@ -10247,14 +10252,14 @@ Symbol: PORTB_PCR19
 Comment: PORTB_PCR19 unused
 PORTB_PCR19_OFFSET 0000004C
 
-Symbol: PORTB_PCR19_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 120 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: PORTB_PCR19_OFFSET
+   Definitions
       At line 1796 in file MKL05Z4.s
    Uses
       At line 1831 in file MKL05Z4.s
@@ -10273,7 +10278,7 @@ Symbol: PORTB_PCR2
    Definitions
       At line 1814 in file MKL05Z4.s
    Uses
-      At line 983 in file lab07src.s
+      At line 988 in file lab07src.s
 Comment: PORTB_PCR2 used once
 PORTB_PCR20 4004A050
 
@@ -10312,14 +10317,14 @@ PORTB_PCR22 4004A058
 Symbol: PORTB_PCR22
    Definitions
       At line 1834 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 121 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: PORTB_PCR22 unused
 PORTB_PCR22_OFFSET 00000058
 
@@ -10377,13 +10382,13 @@ Symbol: PORTB_PCR25_OFFSET
    Uses
       At line 1837 in file MKL05Z4.s
 Comment: PORTB_PCR25_OFFSET used once
-PORTB_PCR26 4004A068
-
 
 
 
 ARM Macro Assembler    Page 122 Alphabetic symbol ordering
 Absolute symbols
+
+PORTB_PCR26 4004A068
 
 Symbol: PORTB_PCR26
    Definitions
@@ -10442,14 +10447,14 @@ Comment: PORTB_PCR29 unused
 PORTB_PCR29_OFFSET 00000074
 
 Symbol: PORTB_PCR29_OFFSET
-   Definitions
-      At line 1806 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 123 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1806 in file MKL05Z4.s
    Uses
       At line 1841 in file MKL05Z4.s
 Comment: PORTB_PCR29_OFFSET used once
@@ -10507,14 +10512,14 @@ Symbol: PORTB_PCR3_OFFSET
    Definitions
       At line 1780 in file MKL05Z4.s
    Uses
-      At line 1815 in file MKL05Z4.s
-Comment: PORTB_PCR3_OFFSET used once
 
 
 
 ARM Macro Assembler    Page 124 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1815 in file MKL05Z4.s
+Comment: PORTB_PCR3_OFFSET used once
 PORTB_PCR4 4004A010
 
 Symbol: PORTB_PCR4
@@ -10573,13 +10578,13 @@ Symbol: PORTB_PCR7
 Comment: PORTB_PCR7 unused
 PORTB_PCR7_OFFSET 0000001C
 
-Symbol: PORTB_PCR7_OFFSET
-
 
 
 ARM Macro Assembler    Page 125 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PORTB_PCR7_OFFSET
    Definitions
       At line 1784 in file MKL05Z4.s
    Uses
@@ -10637,14 +10642,14 @@ PORT_GPCHR_GPWD_MASK 0000FFFF
 
 Symbol: PORT_GPCHR_GPWD_MASK
    Definitions
-      At line 1928 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 126 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1928 in file MKL05Z4.s
+   Uses
       None
 Comment: PORT_GPCHR_GPWD_MASK unused
 PORT_GPCHR_GPWD_SHIFT 00000000
@@ -10702,14 +10707,14 @@ Symbol: PORT_GPCLR_GPWE_SHIFT
       At line 1915 in file MKL05Z4.s
    Uses
       None
-Comment: PORT_GPCLR_GPWE_SHIFT unused
-PORT_ISFR_ISF_MASK FFFFFFFF
 
 
 
 ARM Macro Assembler    Page 127 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: PORT_GPCLR_GPWE_SHIFT unused
+PORT_ISFR_ISF_MASK FFFFFFFF
 
 Symbol: PORT_ISFR_ISF_MASK
    Definitions
@@ -10768,13 +10773,13 @@ Symbol: PORT_PCR_ISF_MASK
 
 PORT_PCR_ISF_SHIFT 00000018
 
-Symbol: PORT_PCR_ISF_SHIFT
-
 
 
 ARM Macro Assembler    Page 128 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PORT_PCR_ISF_SHIFT
    Definitions
       At line 1883 in file MKL05Z4.s
    Uses
@@ -10832,14 +10837,14 @@ Comment: PORT_PCR_MUX_SELECT_4_MASK unused
 PORT_PCR_MUX_SELECT_5_MASK 00000500
 
 Symbol: PORT_PCR_MUX_SELECT_5_MASK
-   Definitions
-      At line 1903 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 129 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1903 in file MKL05Z4.s
    Uses
       None
 Comment: PORT_PCR_MUX_SELECT_5_MASK unused
@@ -10897,14 +10902,14 @@ Symbol: PORT_PCR_PFE_SHIFT
    Definitions
       At line 1891 in file MKL05Z4.s
    Uses
-      None
-Comment: PORT_PCR_PFE_SHIFT unused
 
 
 
 ARM Macro Assembler    Page 130 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: PORT_PCR_PFE_SHIFT unused
 PORT_PCR_PS_MASK 00000001
 
 Symbol: PORT_PCR_PS_MASK
@@ -10927,7 +10932,7 @@ Symbol: PORT_PCR_SET_PTB1_UART0_TX
    Definitions
       At line 54 in file lab07src.s
    Uses
-      At line 990 in file lab07src.s
+      At line 995 in file lab07src.s
 Comment: PORT_PCR_SET_PTB1_UART0_TX used once
 PORT_PCR_SET_PTB2_UART0_RX 01000200
 
@@ -10935,7 +10940,7 @@ Symbol: PORT_PCR_SET_PTB2_UART0_RX
    Definitions
       At line 52 in file lab07src.s
    Uses
-      At line 984 in file lab07src.s
+      At line 989 in file lab07src.s
 Comment: PORT_PCR_SET_PTB2_UART0_RX used once
 PORT_PCR_SRE_MASK 00000004
 
@@ -10963,13 +10968,13 @@ Symbol: PRIMASK_PM_MASK
 Comment: PRIMASK_PM_MASK unused
 PRIMASK_PM_SHIFT 00000000
 
-Symbol: PRIMASK_PM_SHIFT
-
 
 
 ARM Macro Assembler    Page 131 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PRIMASK_PM_SHIFT
    Definitions
       At line 73 in file MKL05Z4.s
    Uses
@@ -11027,14 +11032,14 @@ PSR_T_MASK 01000000
 
 Symbol: PSR_T_MASK
    Definitions
-      At line 133 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 132 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 133 in file MKL05Z4.s
+   Uses
       None
 Comment: PSR_T_MASK unused
 PSR_T_SHIFT 00000018
@@ -11092,14 +11097,14 @@ Symbol: PTA_BASE
 
 PTA_OFFSET 00000000
 
-Symbol: PTA_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 133 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: PTA_OFFSET
+   Definitions
       At line 1968 in file MKL05Z4.s
    Uses
       None
@@ -11157,14 +11162,14 @@ PTB_BASE 400FF040
 Symbol: PTB_BASE
    Definitions
       At line 1979 in file MKL05Z4.s
-   Uses
-      At line 1980 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 134 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 1980 in file MKL05Z4.s
       At line 1981 in file MKL05Z4.s
       At line 1982 in file MKL05Z4.s
       At line 1983 in file MKL05Z4.s
@@ -11222,14 +11227,14 @@ Comment: PTB_PSOR unused
 PTB_PTOR 400FF04C
 
 Symbol: PTB_PTOR
-   Definitions
-      At line 1983 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 135 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1983 in file MKL05Z4.s
    Uses
       None
 Comment: PTB_PTOR unused
@@ -11288,13 +11293,13 @@ Symbol: PT_PSOR_OFFSET
 
 PT_PTOR_OFFSET 0000000C
 
-Symbol: PT_PTOR_OFFSET
-
 
 
 ARM Macro Assembler    Page 136 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: PT_PTOR_OFFSET
    Definitions
       At line 1965 in file MKL05Z4.s
    Uses
@@ -11333,7 +11338,7 @@ Symbol: Q_BUF_SZ
    Uses
       At line 255 in file lab07src.s
       At line 570 in file lab07src.s
-      At line 1141 in file lab07src.s
+      At line 1146 in file lab07src.s
 
 Q_END_CH 0000003C
 
@@ -11349,17 +11354,17 @@ Symbol: Q_REC_SZ
    Definitions
       At line 37 in file lab07src.s
    Uses
-      At line 1142 in file lab07src.s
+      At line 1147 in file lab07src.s
 Comment: Q_REC_SZ used once
 RET_ADDR_T_MASK 00000001
-
-Symbol: RET_ADDR_T_MASK
 
 
 
 ARM Macro Assembler    Page 137 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: RET_ADDR_T_MASK
    Definitions
       At line 44 in file MKL05Z4.s
    Uses
@@ -11417,14 +11422,14 @@ RTC_Seconds_IRQn 00000015
 
 Symbol: RTC_Seconds_IRQn
    Definitions
-      At line 178 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 138 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 178 in file MKL05Z4.s
+   Uses
       At line 1529 in file MKL05Z4.s
 Comment: RTC_Seconds_IRQn used once
 RTC_Seconds_PRI_POS 0000000E
@@ -11482,14 +11487,14 @@ Symbol: Reserved07_Vector
       At line 1549 in file MKL05Z4.s
    Uses
       None
-Comment: Reserved07_Vector unused
-Reserved08_Vector 00000008
 
 
 
 ARM Macro Assembler    Page 139 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: Reserved07_Vector unused
+Reserved08_Vector 00000008
 
 Symbol: Reserved08_Vector
    Definitions
@@ -11547,14 +11552,14 @@ Symbol: Reserved20_IRQ_MASK
 Comment: Reserved20_IRQ_MASK unused
 Reserved20_IRQn 00000004
 
-Symbol: Reserved20_IRQn
-   Definitions
 
 
 
 ARM Macro Assembler    Page 140 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: Reserved20_IRQn
+   Definitions
       At line 161 in file MKL05Z4.s
    Uses
       At line 1512 in file MKL05Z4.s
@@ -11612,14 +11617,14 @@ Reserved25_Vector 00000019
 Symbol: Reserved25_Vector
    Definitions
       At line 1568 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 141 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: Reserved25_Vector unused
 Reserved27_IPR E000E408
 
@@ -11677,13 +11682,13 @@ Symbol: Reserved29_IRQ_MASK
    Uses
       None
 Comment: Reserved29_IRQ_MASK unused
-Reserved29_IRQn 0000000D
-
 
 
 
 ARM Macro Assembler    Page 142 Alphabetic symbol ordering
 Absolute symbols
+
+Reserved29_IRQn 0000000D
 
 Symbol: Reserved29_IRQn
    Definitions
@@ -11742,14 +11747,14 @@ Comment: Reserved30_PRI_POS unused
 Reserved30_Vector 0000001E
 
 Symbol: Reserved30_Vector
-   Definitions
-      At line 1573 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 143 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 1573 in file MKL05Z4.s
    Uses
       None
 Comment: Reserved30_Vector unused
@@ -11807,14 +11812,14 @@ Symbol: Reserved39_IRQ_MASK
    Definitions
       At line 1531 in file MKL05Z4.s
    Uses
-      None
-Comment: Reserved39_IRQ_MASK unused
 
 
 
 ARM Macro Assembler    Page 144 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: Reserved39_IRQ_MASK unused
 Reserved39_IRQn 00000017
 
 Symbol: Reserved39_IRQn
@@ -11873,13 +11878,13 @@ Symbol: Reserved40_PRI_POS
 Comment: Reserved40_PRI_POS unused
 Reserved40_Vector 00000028
 
-Symbol: Reserved40_Vector
-
 
 
 ARM Macro Assembler    Page 145 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: Reserved40_Vector
    Definitions
       At line 1583 in file MKL05Z4.s
    Uses
@@ -11937,14 +11942,14 @@ SIM_BASE 40047000
 
 Symbol: SIM_BASE
    Definitions
-      At line 1991 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 146 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1991 in file MKL05Z4.s
+   Uses
       At line 2011 in file MKL05Z4.s
       At line 2012 in file MKL05Z4.s
       At line 2013 in file MKL05Z4.s
@@ -12002,14 +12007,14 @@ SIM_CLKDIV1_OUTDIV4_MASK 00070000
 Symbol: SIM_CLKDIV1_OUTDIV4_MASK
    Definitions
       At line 2044 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 147 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: SIM_CLKDIV1_OUTDIV4_MASK unused
 SIM_CLKDIV1_OUTDIV4_SHIFT 00000010
 
@@ -12067,19 +12072,19 @@ Symbol: SIM_FCFG2_OFFSET
    Uses
       At line 2014 in file MKL05Z4.s
 Comment: SIM_FCFG2_OFFSET used once
-SIM_SCGC4 40048034
-
 
 
 
 ARM Macro Assembler    Page 148 Alphabetic symbol ordering
 Absolute symbols
 
+SIM_SCGC4 40048034
+
 Symbol: SIM_SCGC4
    Definitions
       At line 2015 in file MKL05Z4.s
    Uses
-      At line 969 in file lab07src.s
+      At line 974 in file lab07src.s
 Comment: SIM_SCGC4 used once
 SIM_SCGC4_CMP_MASK 00080000
 
@@ -12132,14 +12137,14 @@ Comment: SIM_SCGC4_SPI0_MASK unused
 SIM_SCGC4_SPI0_SHIFT 00000016
 
 Symbol: SIM_SCGC4_SPI0_SHIFT
-   Definitions
-      At line 2084 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 149 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 2084 in file MKL05Z4.s
    Uses
       None
 Comment: SIM_SCGC4_SPI0_SHIFT unused
@@ -12149,7 +12154,7 @@ Symbol: SIM_SCGC4_UART0_MASK
    Definitions
       At line 2087 in file MKL05Z4.s
    Uses
-      At line 970 in file lab07src.s
+      At line 975 in file lab07src.s
 Comment: SIM_SCGC4_UART0_MASK used once
 SIM_SCGC4_UART0_SHIFT 0000000A
 
@@ -12165,7 +12170,7 @@ Symbol: SIM_SCGC5
    Definitions
       At line 2016 in file MKL05Z4.s
    Uses
-      At line 975 in file lab07src.s
+      At line 980 in file lab07src.s
 Comment: SIM_SCGC5 used once
 SIM_SCGC5_LPTMR_MASK 00000001
 
@@ -12197,14 +12202,14 @@ Symbol: SIM_SCGC5_PORTA_MASK
    Definitions
       At line 2109 in file MKL05Z4.s
    Uses
-      None
-Comment: SIM_SCGC5_PORTA_MASK unused
 
 
 
 ARM Macro Assembler    Page 150 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: SIM_SCGC5_PORTA_MASK unused
 SIM_SCGC5_PORTA_SHIFT 00000009
 
 Symbol: SIM_SCGC5_PORTA_SHIFT
@@ -12219,7 +12224,7 @@ Symbol: SIM_SCGC5_PORTB_MASK
    Definitions
       At line 2107 in file MKL05Z4.s
    Uses
-      At line 976 in file lab07src.s
+      At line 981 in file lab07src.s
 Comment: SIM_SCGC5_PORTB_MASK used once
 SIM_SCGC5_PORTB_SHIFT 0000000A
 
@@ -12263,13 +12268,13 @@ Symbol: SIM_SCGC6_ADC0_MASK
 Comment: SIM_SCGC6_ADC0_MASK unused
 SIM_SCGC6_ADC0_SHIFT 0000001B
 
-Symbol: SIM_SCGC6_ADC0_SHIFT
-
 
 
 ARM Macro Assembler    Page 151 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: SIM_SCGC6_ADC0_SHIFT
    Definitions
       At line 2136 in file MKL05Z4.s
    Uses
@@ -12327,14 +12332,14 @@ SIM_SCGC6_OFFSET 0000103C
 
 Symbol: SIM_SCGC6_OFFSET
    Definitions
-      At line 2001 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 152 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2001 in file MKL05Z4.s
+   Uses
       At line 2017 in file MKL05Z4.s
 Comment: SIM_SCGC6_OFFSET used once
 SIM_SCGC6_PIT_MASK 00800000
@@ -12392,14 +12397,14 @@ Symbol: SIM_SCGC6_TPM1_MASK
       At line 2137 in file MKL05Z4.s
    Uses
       None
-Comment: SIM_SCGC6_TPM1_MASK unused
-SIM_SCGC6_TPM1_SHIFT 00000019
 
 
 
 ARM Macro Assembler    Page 153 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: SIM_SCGC6_TPM1_MASK unused
+SIM_SCGC6_TPM1_SHIFT 00000019
 
 Symbol: SIM_SCGC6_TPM1_SHIFT
    Definitions
@@ -12457,14 +12462,14 @@ Symbol: SIM_SOPT1CFG
 Comment: SIM_SOPT1CFG unused
 SIM_SOPT1CFG_OFFSET 00000004
 
-Symbol: SIM_SOPT1CFG_OFFSET
-   Definitions
 
 
 
 ARM Macro Assembler    Page 154 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: SIM_SOPT1CFG_OFFSET
+   Definitions
       At line 1993 in file MKL05Z4.s
    Uses
       At line 2021 in file MKL05Z4.s
@@ -12499,7 +12504,7 @@ Symbol: SIM_SOPT2
    Definitions
       At line 2022 in file MKL05Z4.s
    Uses
-      At line 951 in file lab07src.s
+      At line 956 in file lab07src.s
 Comment: SIM_SOPT2 used once
 SIM_SOPT2_CLKOUTSEL_MASK 000000E0
 
@@ -12522,14 +12527,14 @@ SIM_SOPT2_OFFSET 00001004
 Symbol: SIM_SOPT2_OFFSET
    Definitions
       At line 1994 in file MKL05Z4.s
-   Uses
-      At line 2022 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 155 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 2022 in file MKL05Z4.s
 Comment: SIM_SOPT2_OFFSET used once
 SIM_SOPT2_RTCCLKOUTSEL_MASK 00000010
 
@@ -12569,7 +12574,7 @@ Symbol: SIM_SOPT2_UART0SRC_MASK
    Definitions
       At line 2191 in file MKL05Z4.s
    Uses
-      At line 952 in file lab07src.s
+      At line 957 in file lab07src.s
 Comment: SIM_SOPT2_UART0SRC_MASK used once
 SIM_SOPT2_UART0SRC_MCGFLLCLK 04000000
 
@@ -12577,7 +12582,7 @@ Symbol: SIM_SOPT2_UART0SRC_MCGFLLCLK
    Definitions
       At line 68 in file lab07src.s
    Uses
-      At line 955 in file lab07src.s
+      At line 960 in file lab07src.s
 Comment: SIM_SOPT2_UART0SRC_MCGFLLCLK used once
 SIM_SOPT2_UART0SRC_SHIFT 0000001A
 
@@ -12587,13 +12592,13 @@ Symbol: SIM_SOPT2_UART0SRC_SHIFT
    Uses
       At line 68 in file lab07src.s
 Comment: SIM_SOPT2_UART0SRC_SHIFT used once
-SIM_SOPT4 4004800C
-
 
 
 
 ARM Macro Assembler    Page 156 Alphabetic symbol ordering
 Absolute symbols
+
+SIM_SOPT4 4004800C
 
 Symbol: SIM_SOPT4
    Definitions
@@ -12615,7 +12620,7 @@ Symbol: SIM_SOPT5
    Definitions
       At line 2024 in file MKL05Z4.s
    Uses
-      At line 961 in file lab07src.s
+      At line 966 in file lab07src.s
 Comment: SIM_SOPT5 used once
 SIM_SOPT5_OFFSET 00001010
 
@@ -12652,14 +12657,14 @@ Comment: SIM_SOPT5_UART0RXSRC_MASK used once
 SIM_SOPT5_UART0RXSRC_SHIFT 00000002
 
 Symbol: SIM_SOPT5_UART0RXSRC_SHIFT
-   Definitions
-      At line 2227 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 157 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 2227 in file MKL05Z4.s
    Uses
       None
 Comment: SIM_SOPT5_UART0RXSRC_SHIFT unused
@@ -12685,7 +12690,7 @@ Symbol: SIM_SOPT5_UART0_EXTERN_MASK_CLEAR
    Definitions
       At line 77 in file lab07src.s
    Uses
-      At line 962 in file lab07src.s
+      At line 967 in file lab07src.s
 Comment: SIM_SOPT5_UART0_EXTERN_MASK_CLEAR used once
 SIM_SOPT7 40048018
 
@@ -12717,14 +12722,14 @@ Symbol: SIM_SRVCOP_OFFSET
    Definitions
       At line 2010 in file MKL05Z4.s
    Uses
-      At line 2026 in file MKL05Z4.s
-Comment: SIM_SRVCOP_OFFSET used once
 
 
 
 ARM Macro Assembler    Page 158 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2026 in file MKL05Z4.s
+Comment: SIM_SRVCOP_OFFSET used once
 SIM_UIDL 40048060
 
 Symbol: SIM_UIDL
@@ -12783,13 +12788,13 @@ Symbol: SPI0_IPR
 Comment: SPI0_IPR unused
 SPI0_IRQ_MASK 00000400
 
-Symbol: SPI0_IRQ_MASK
-
 
 
 ARM Macro Assembler    Page 159 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: SPI0_IRQ_MASK
    Definitions
       At line 1518 in file MKL05Z4.s
    Uses
@@ -12847,14 +12852,14 @@ SysTick_Vector 0000000F
 
 Symbol: SysTick_Vector
    Definitions
-      At line 1558 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 160 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1558 in file MKL05Z4.s
+   Uses
       None
 Comment: SysTick_Vector unused
 TPM0_BASE 40038000
@@ -12912,14 +12917,14 @@ Symbol: TPM0_C1V
       At line 2262 in file MKL05Z4.s
    Uses
       None
-Comment: TPM0_C1V unused
-TPM0_C2SC 4003801C
 
 
 
 ARM Macro Assembler    Page 161 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: TPM0_C1V unused
+TPM0_C2SC 4003801C
 
 Symbol: TPM0_C2SC
    Definitions
@@ -12977,14 +12982,14 @@ Symbol: TPM0_C5SC
 Comment: TPM0_C5SC unused
 TPM0_C5V 40038038
 
-Symbol: TPM0_C5V
-   Definitions
 
 
 
 ARM Macro Assembler    Page 162 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: TPM0_C5V
+   Definitions
       At line 2270 in file MKL05Z4.s
    Uses
       None
@@ -13042,14 +13047,14 @@ TPM0_PRI_POS 0000000E
 Symbol: TPM0_PRI_POS
    Definitions
       At line 1491 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 163 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: TPM0_PRI_POS unused
 TPM0_SC 40038000
 
@@ -13107,13 +13112,13 @@ Symbol: TPM1_C0SC
    Uses
       None
 Comment: TPM1_C0SC unused
-TPM1_C0V 40039010
-
 
 
 
 ARM Macro Assembler    Page 164 Alphabetic symbol ordering
 Absolute symbols
+
+TPM1_C0V 40039010
 
 Symbol: TPM1_C0V
    Definitions
@@ -13172,14 +13177,14 @@ Comment: TPM1_C3V unused
 TPM1_C4SC 4003902C
 
 Symbol: TPM1_C4SC
-   Definitions
-      At line 2290 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 165 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 2290 in file MKL05Z4.s
    Uses
       None
 Comment: TPM1_C4SC unused
@@ -13237,14 +13242,14 @@ Symbol: TPM1_IRQ_MASK
    Definitions
       At line 1526 in file MKL05Z4.s
    Uses
-      None
-Comment: TPM1_IRQ_MASK unused
 
 
 
 ARM Macro Assembler    Page 166 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: TPM1_IRQ_MASK unused
 TPM1_IRQn 00000012
 
 Symbol: TPM1_IRQn
@@ -13302,13 +13307,13 @@ Symbol: TPM_C0SC_OFFSET
       At line 2259 in file MKL05Z4.s
       At line 2282 in file MKL05Z4.s
 
-TPM_C0V_OFFSET 00000010
-
 
 
 
 ARM Macro Assembler    Page 167 Alphabetic symbol ordering
 Absolute symbols
+
+TPM_C0V_OFFSET 00000010
 
 Symbol: TPM_C0V_OFFSET
    Definitions
@@ -13367,14 +13372,14 @@ TPM_C3V_OFFSET 00000028
 Symbol: TPM_C3V_OFFSET
    Definitions
       At line 2242 in file MKL05Z4.s
-   Uses
-      At line 2266 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 168 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 2266 in file MKL05Z4.s
       At line 2289 in file MKL05Z4.s
 
 TPM_C4SC_OFFSET 0000002C
@@ -13432,14 +13437,14 @@ Symbol: TPM_CONF_CROT_MASK
 Comment: TPM_CONF_CROT_MASK unused
 TPM_CONF_CROT_SHIFT 00000012
 
-Symbol: TPM_CONF_CROT_SHIFT
-   Definitions
 
 
 
 ARM Macro Assembler    Page 169 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: TPM_CONF_CROT_SHIFT
+   Definitions
       At line 2392 in file MKL05Z4.s
    Uses
       None
@@ -13497,14 +13502,14 @@ TPM_CONF_DOZEEN_MASK 00000020
 Symbol: TPM_CONF_DOZEEN_MASK
    Definitions
       At line 2401 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 170 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: TPM_CONF_DOZEEN_MASK unused
 TPM_CONF_DOZEEN_SHIFT 00000005
 
@@ -13562,14 +13567,14 @@ Symbol: TPM_CnSC_CDMA_MASK
       At line 2339 in file MKL05Z4.s
    Uses
       None
-Comment: TPM_CnSC_CDMA_MASK unused
-TPM_CnSC_CDMA_SHIFT 00000000
 
 
 
 ARM Macro Assembler    Page 171 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: TPM_CnSC_CDMA_MASK unused
+TPM_CnSC_CDMA_SHIFT 00000000
 
 Symbol: TPM_CnSC_CDMA_SHIFT
    Definitions
@@ -13627,14 +13632,14 @@ Symbol: TPM_CnSC_ELSA_SHIFT
 Comment: TPM_CnSC_ELSA_SHIFT unused
 TPM_CnSC_ELSB_MASK 00000008
 
-Symbol: TPM_CnSC_ELSB_MASK
-   Definitions
 
 
 
 ARM Macro Assembler    Page 172 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: TPM_CnSC_ELSB_MASK
+   Definitions
       At line 2335 in file MKL05Z4.s
    Uses
       None
@@ -13692,14 +13697,14 @@ TPM_CnV_VAL_SHIFT 00000000
 Symbol: TPM_CnV_VAL_SHIFT
    Definitions
       At line 2346 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 173 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: TPM_CnV_VAL_SHIFT unused
 TPM_MOD_MOD_MASK 0000FFFF
 
@@ -13757,14 +13762,14 @@ Symbol: TPM_SC_CPWMS_SHIFT
       At line 2435 in file MKL05Z4.s
    Uses
       None
-Comment: TPM_SC_CPWMS_SHIFT unused
-TPM_SC_DMA_MASK 00000100
 
 
 
 ARM Macro Assembler    Page 174 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: TPM_SC_CPWMS_SHIFT unused
+TPM_SC_DMA_MASK 00000100
 
 Symbol: TPM_SC_DMA_MASK
    Definitions
@@ -13823,13 +13828,13 @@ Symbol: TPM_SC_TOF_SHIFT
 Comment: TPM_SC_TOF_SHIFT unused
 TPM_SC_TOIE_MASK 00000040
 
-Symbol: TPM_SC_TOIE_MASK
-
 
 
 ARM Macro Assembler    Page 175 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: TPM_SC_TOIE_MASK
    Definitions
       At line 2432 in file MKL05Z4.s
    Uses
@@ -13887,14 +13892,14 @@ TPM_STATUS_CH2F_SHIFT 00000002
 
 Symbol: TPM_STATUS_CH2F_SHIFT
    Definitions
-      At line 2460 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 176 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2460 in file MKL05Z4.s
+   Uses
       None
 Comment: TPM_STATUS_CH2F_SHIFT unused
 TPM_STATUS_CH3F_MASK 00000008
@@ -13952,13 +13957,13 @@ Symbol: TPM_STATUS_OFFSET
       At line 2249 in file MKL05Z4.s
    Uses
       At line 2273 in file MKL05Z4.s
-      At line 2296 in file MKL05Z4.s
-
 
 
 
 ARM Macro Assembler    Page 177 Alphabetic symbol ordering
 Absolute symbols
+
+      At line 2296 in file MKL05Z4.s
 
 TPM_STATUS_TOF_MASK 00000100
 
@@ -14018,13 +14023,13 @@ Symbol: TSI0_Vector
 Comment: TSI0_Vector unused
 UART0_BASE 4006A000
 
-Symbol: UART0_BASE
-
 
 
 ARM Macro Assembler    Page 178 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: UART0_BASE
    Definitions
       At line 2467 in file MKL05Z4.s
    Uses
@@ -14042,7 +14047,7 @@ Absolute symbols
       At line 2492 in file MKL05Z4.s
       At line 435 in file lab07src.s
       At line 456 in file lab07src.s
-      At line 995 in file lab07src.s
+      At line 1000 in file lab07src.s
 
 UART0_BDH 4006A000
 
@@ -14058,7 +14063,7 @@ Symbol: UART0_BDH_9600
    Definitions
       At line 88 in file lab07src.s
    Uses
-      At line 1003 in file lab07src.s
+      At line 1008 in file lab07src.s
 Comment: UART0_BDH_9600 used once
 UART0_BDH_LBKDIE_MASK 00000080
 
@@ -14082,14 +14087,14 @@ Symbol: UART0_BDH_OFFSET
    Definitions
       At line 2469 in file MKL05Z4.s
    Uses
-      At line 2481 in file MKL05Z4.s
-      At line 1004 in file lab07src.s
 
 
 
 ARM Macro Assembler    Page 179 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2481 in file MKL05Z4.s
+      At line 1009 in file lab07src.s
 
 UART0_BDH_RXEDGIE_MASK 00000040
 
@@ -14147,19 +14152,19 @@ Symbol: UART0_BDL
    Uses
       None
 Comment: UART0_BDL unused
-UART0_BDL_9600 00000038
-
 
 
 
 ARM Macro Assembler    Page 180 Alphabetic symbol ordering
 Absolute symbols
 
+UART0_BDL_9600 00000038
+
 Symbol: UART0_BDL_9600
    Definitions
       At line 96 in file lab07src.s
    Uses
-      At line 1005 in file lab07src.s
+      At line 1010 in file lab07src.s
 Comment: UART0_BDL_9600 used once
 UART0_BDL_OFFSET 00000001
 
@@ -14168,7 +14173,7 @@ Symbol: UART0_BDL_OFFSET
       At line 2470 in file MKL05Z4.s
    Uses
       At line 2482 in file MKL05Z4.s
-      At line 1006 in file lab07src.s
+      At line 1011 in file lab07src.s
 
 UART0_BDL_SBR_MASK 000000FF
 
@@ -14200,7 +14205,7 @@ Symbol: UART0_C1_8N1
    Definitions
       At line 108 in file lab07src.s
    Uses
-      At line 1007 in file lab07src.s
+      At line 1012 in file lab07src.s
 Comment: UART0_C1_8N1 used once
 UART0_C1_DOZEEN_MASK 00000040
 
@@ -14212,14 +14217,14 @@ Symbol: UART0_C1_DOZEEN_MASK
 Comment: UART0_C1_DOZEEN_MASK unused
 UART0_C1_DOZEEN_SHIFT 00000006
 
-Symbol: UART0_C1_DOZEEN_SHIFT
-   Definitions
 
 
 
 ARM Macro Assembler    Page 181 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: UART0_C1_DOZEEN_SHIFT
+   Definitions
       At line 2525 in file MKL05Z4.s
    Uses
       None
@@ -14277,15 +14282,15 @@ UART0_C1_OFFSET 00000002
 Symbol: UART0_C1_OFFSET
    Definitions
       At line 2471 in file MKL05Z4.s
-   Uses
-      At line 2483 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 182 Alphabetic symbol ordering
 Absolute symbols
 
-      At line 1008 in file lab07src.s
+   Uses
+      At line 2483 in file MKL05Z4.s
+      At line 1013 in file lab07src.s
 
 UART0_C1_PE_MASK 00000002
 
@@ -14342,14 +14347,14 @@ Symbol: UART0_C1_WAKE_MASK
       At line 2530 in file MKL05Z4.s
    Uses
       None
-Comment: UART0_C1_WAKE_MASK unused
-UART0_C1_WAKE_SHIFT 00000003
 
 
 
 ARM Macro Assembler    Page 183 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: UART0_C1_WAKE_MASK unused
+UART0_C1_WAKE_SHIFT 00000003
 
 Symbol: UART0_C1_WAKE_SHIFT
    Definitions
@@ -14388,9 +14393,9 @@ Symbol: UART0_C2_OFFSET
       At line 2472 in file MKL05Z4.s
    Uses
       At line 2484 in file MKL05Z4.s
-      At line 997 in file lab07src.s
-      At line 999 in file lab07src.s
-      At line 1023 in file lab07src.s
+      At line 1002 in file lab07src.s
+      At line 1004 in file lab07src.s
+      At line 1028 in file lab07src.s
 
 UART0_C2_RE_MASK 00000004
 
@@ -14407,14 +14412,14 @@ Symbol: UART0_C2_RE_SHIFT
       At line 2559 in file MKL05Z4.s
    Uses
       None
-Comment: UART0_C2_RE_SHIFT unused
-UART0_C2_RIE_MASK 00000020
 
 
 
 ARM Macro Assembler    Page 184 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: UART0_C2_RE_SHIFT unused
+UART0_C2_RIE_MASK 00000020
 
 Symbol: UART0_C2_RIE_MASK
    Definitions
@@ -14472,14 +14477,14 @@ Symbol: UART0_C2_TCIE_MASK
 Comment: UART0_C2_TCIE_MASK unused
 UART0_C2_TCIE_SHIFT 00000006
 
-Symbol: UART0_C2_TCIE_SHIFT
-   Definitions
 
 
 
 ARM Macro Assembler    Page 185 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: UART0_C2_TCIE_SHIFT
+   Definitions
       At line 2551 in file MKL05Z4.s
    Uses
       None
@@ -14522,8 +14527,8 @@ Symbol: UART0_C2_T_R
    Definitions
       At line 119 in file lab07src.s
    Uses
-      At line 996 in file lab07src.s
-      At line 1022 in file lab07src.s
+      At line 1001 in file lab07src.s
+      At line 1027 in file lab07src.s
 
 UART0_C3 4006A006
 
@@ -14537,14 +14542,14 @@ UART0_C3_FEIE_MASK 00000002
 
 Symbol: UART0_C3_FEIE_MASK
    Definitions
-      At line 2587 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 186 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2587 in file MKL05Z4.s
+   Uses
       None
 Comment: UART0_C3_FEIE_MASK unused
 UART0_C3_FEIE_SHIFT 00000001
@@ -14577,7 +14582,7 @@ Symbol: UART0_C3_NO_TXINV
    Definitions
       At line 133 in file lab07src.s
    Uses
-      At line 1009 in file lab07src.s
+      At line 1014 in file lab07src.s
 Comment: UART0_C3_NO_TXINV used once
 UART0_C3_OFFSET 00000006
 
@@ -14586,7 +14591,7 @@ Symbol: UART0_C3_OFFSET
       At line 2475 in file MKL05Z4.s
    Uses
       At line 2487 in file MKL05Z4.s
-      At line 1010 in file lab07src.s
+      At line 1015 in file lab07src.s
 
 UART0_C3_ORIE_MASK 00000008
 
@@ -14602,14 +14607,14 @@ Symbol: UART0_C3_ORIE_SHIFT
    Definitions
       At line 2584 in file MKL05Z4.s
    Uses
-      None
-Comment: UART0_C3_ORIE_SHIFT unused
 
 
 
 ARM Macro Assembler    Page 187 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: UART0_C3_ORIE_SHIFT unused
 UART0_C3_PEIE_MASK 00000001
 
 Symbol: UART0_C3_PEIE_MASK
@@ -14668,13 +14673,13 @@ Symbol: UART0_C3_TXDIR_MASK
 Comment: UART0_C3_TXDIR_MASK unused
 UART0_C3_TXDIR_SHIFT 00000005
 
-Symbol: UART0_C3_TXDIR_SHIFT
-
 
 
 ARM Macro Assembler    Page 188 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: UART0_C3_TXDIR_SHIFT
    Definitions
       At line 2580 in file MKL05Z4.s
    Uses
@@ -14732,14 +14737,14 @@ UART0_C4_MAEN1_SHIFT 00000007
 
 Symbol: UART0_C4_MAEN1_SHIFT
    Definitions
-      At line 2600 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 189 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2600 in file MKL05Z4.s
+   Uses
       None
 Comment: UART0_C4_MAEN1_SHIFT unused
 UART0_C4_MAEN2_MASK 00000040
@@ -14764,7 +14769,7 @@ Symbol: UART0_C4_NO_MATCH_OSR_16
    Definitions
       At line 143 in file lab07src.s
    Uses
-      At line 1011 in file lab07src.s
+      At line 1016 in file lab07src.s
 Comment: UART0_C4_NO_MATCH_OSR_16 used once
 UART0_C4_OFFSET 0000000A
 
@@ -14773,7 +14778,7 @@ Symbol: UART0_C4_OFFSET
       At line 2479 in file MKL05Z4.s
    Uses
       At line 2491 in file MKL05Z4.s
-      At line 1012 in file lab07src.s
+      At line 1017 in file lab07src.s
 
 UART0_C4_OSR_16 0000000F
 
@@ -14797,14 +14802,14 @@ Symbol: UART0_C4_OSR_SHIFT
    Definitions
       At line 2606 in file MKL05Z4.s
    Uses
-      None
-Comment: UART0_C4_OSR_SHIFT unused
 
 
 
 ARM Macro Assembler    Page 190 Alphabetic symbol ordering
 Absolute symbols
 
+      None
+Comment: UART0_C4_OSR_SHIFT unused
 UART0_C5 4006A00B
 
 Symbol: UART0_C5
@@ -14835,7 +14840,7 @@ Symbol: UART0_C5_NO_DMA_SSR_SYNC
    Definitions
       At line 152 in file lab07src.s
    Uses
-      At line 1013 in file lab07src.s
+      At line 1018 in file lab07src.s
 Comment: UART0_C5_NO_DMA_SSR_SYNC used once
 UART0_C5_OFFSET 0000000B
 
@@ -14844,7 +14849,7 @@ Symbol: UART0_C5_OFFSET
       At line 2480 in file MKL05Z4.s
    Uses
       At line 2492 in file MKL05Z4.s
-      At line 1014 in file lab07src.s
+      At line 1019 in file lab07src.s
 
 UART0_C5_RDMAE_MASK 00000020
 
@@ -14862,13 +14867,13 @@ Symbol: UART0_C5_RDMAE_SHIFT
    Uses
       None
 Comment: UART0_C5_RDMAE_SHIFT unused
-UART0_C5_RESYNCDIS_MASK 00000001
-
 
 
 
 ARM Macro Assembler    Page 191 Alphabetic symbol ordering
 Absolute symbols
+
+UART0_C5_RESYNCDIS_MASK 00000001
 
 Symbol: UART0_C5_RESYNCDIS_MASK
    Definitions
@@ -14928,13 +14933,13 @@ Symbol: UART0_D_R0T0_MASK
 Comment: UART0_D_R0T0_MASK unused
 UART0_D_R0T0_SHIFT 00000000
 
-Symbol: UART0_D_R0T0_SHIFT
-
 
 
 ARM Macro Assembler    Page 192 Alphabetic symbol ordering
 Absolute symbols
 
+
+Symbol: UART0_D_R0T0_SHIFT
    Definitions
       At line 2656 in file MKL05Z4.s
    Uses
@@ -14992,14 +14997,14 @@ UART0_D_R4T4_MASK 00000010
 
 Symbol: UART0_D_R4T4_MASK
    Definitions
-      At line 2647 in file MKL05Z4.s
-   Uses
 
 
 
 ARM Macro Assembler    Page 193 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 2647 in file MKL05Z4.s
+   Uses
       None
 Comment: UART0_D_R4T4_MASK unused
 UART0_D_R4T4_SHIFT 00000004
@@ -15057,14 +15062,14 @@ Symbol: UART0_D_R7T7_SHIFT
       At line 2642 in file MKL05Z4.s
    Uses
       None
-Comment: UART0_D_R7T7_SHIFT unused
-UART0_IPR E000E40C
 
 
 
 ARM Macro Assembler    Page 194 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: UART0_D_R7T7_SHIFT unused
+UART0_IPR E000E40C
 
 Symbol: UART0_IPR
    Definitions
@@ -15122,14 +15127,14 @@ Symbol: UART0_MA1_OFFSET
 Comment: UART0_MA1_OFFSET used once
 UART0_MA2 4006A009
 
-Symbol: UART0_MA2
-   Definitions
 
 
 
 ARM Macro Assembler    Page 195 Alphabetic symbol ordering
 Absolute symbols
 
+Symbol: UART0_MA2
+   Definitions
       At line 2490 in file MKL05Z4.s
    Uses
       None
@@ -15180,21 +15185,21 @@ Symbol: UART0_S1_CLEAR_FLAGS
    Definitions
       At line 167 in file lab07src.s
    Uses
-      At line 1015 in file lab07src.s
+      At line 1020 in file lab07src.s
 Comment: UART0_S1_CLEAR_FLAGS used once
 UART0_S1_FE_MASK 00000002
 
 Symbol: UART0_S1_FE_MASK
    Definitions
       At line 2689 in file MKL05Z4.s
-   Uses
-      At line 167 in file lab07src.s
 
 
 
 ARM Macro Assembler    Page 196 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 167 in file lab07src.s
 Comment: UART0_S1_FE_MASK used once
 UART0_S1_FE_SHIFT 00000001
 
@@ -15245,21 +15250,21 @@ Symbol: UART0_S1_OFFSET
       At line 2485 in file MKL05Z4.s
       At line 438 in file lab07src.s
       At line 459 in file lab07src.s
-      At line 1016 in file lab07src.s
+      At line 1021 in file lab07src.s
 
 UART0_S1_OR_MASK 00000008
 
 Symbol: UART0_S1_OR_MASK
    Definitions
       At line 2685 in file MKL05Z4.s
-   Uses
-      At line 167 in file lab07src.s
 
 
 
 ARM Macro Assembler    Page 197 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      At line 167 in file lab07src.s
 Comment: UART0_S1_OR_MASK used once
 UART0_S1_OR_SHIFT 00000003
 
@@ -15317,13 +15322,13 @@ Symbol: UART0_S1_TC_SHIFT
    Uses
       None
 Comment: UART0_S1_TC_SHIFT unused
-UART0_S1_TDRE_MASK 00000080
-
 
 
 
 ARM Macro Assembler    Page 198 Alphabetic symbol ordering
 Absolute symbols
+
+UART0_S1_TDRE_MASK 00000080
 
 Symbol: UART0_S1_TDRE_MASK
    Definitions
@@ -15382,14 +15387,14 @@ Comment: UART0_S2_LBKDE_SHIFT unused
 UART0_S2_LBKDIF_MASK 00000080
 
 Symbol: UART0_S2_LBKDIF_MASK
-   Definitions
-      At line 2703 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 199 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
+      At line 2703 in file MKL05Z4.s
    Uses
       At line 181 in file lab07src.s
 Comment: UART0_S2_LBKDIF_MASK used once
@@ -15423,7 +15428,7 @@ Symbol: UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS
    Definitions
       At line 181 in file lab07src.s
    Uses
-      At line 1017 in file lab07src.s
+      At line 1022 in file lab07src.s
 Comment: UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS used once
 UART0_S2_OFFSET 00000005
 
@@ -15432,7 +15437,7 @@ Symbol: UART0_S2_OFFSET
       At line 2474 in file MKL05Z4.s
    Uses
       At line 2486 in file MKL05Z4.s
-      At line 1018 in file lab07src.s
+      At line 1023 in file lab07src.s
 
 UART0_S2_RAF_MASK 00000001
 
@@ -15447,14 +15452,14 @@ UART0_S2_RAF_SHIFT 00000000
 Symbol: UART0_S2_RAF_SHIFT
    Definitions
       At line 2718 in file MKL05Z4.s
-   Uses
-      None
 
 
 
 ARM Macro Assembler    Page 200 Alphabetic symbol ordering
 Absolute symbols
 
+   Uses
+      None
 Comment: UART0_S2_RAF_SHIFT unused
 UART0_S2_RWUID_MASK 00000008
 
@@ -15512,13 +15517,13 @@ Symbol: UART0_Vector
    Uses
       None
 Comment: UART0_Vector unused
-VECTOR_SIZE 00000004
-
 
 
 
 ARM Macro Assembler    Page 201 Alphabetic symbol ordering
 Absolute symbols
+
+VECTOR_SIZE 00000004
 
 Symbol: VECTOR_SIZE
    Definitions
@@ -15577,14 +15582,14 @@ Symbol: __NVIC_PRIO_BITS
       At line 1484 in file MKL05Z4.s
       At line 1485 in file MKL05Z4.s
       At line 1486 in file MKL05Z4.s
-      At line 1487 in file MKL05Z4.s
-      At line 1488 in file MKL05Z4.s
 
 
 
 ARM Macro Assembler    Page 202 Alphabetic symbol ordering
 Absolute symbols
 
+      At line 1487 in file MKL05Z4.s
+      At line 1488 in file MKL05Z4.s
       At line 1489 in file MKL05Z4.s
       At line 1490 in file MKL05Z4.s
       At line 1491 in file MKL05Z4.s
@@ -15615,9 +15620,9 @@ __Vectors_Size 000000C0
 
 Symbol: __Vectors_Size
    Definitions
-      At line 1119 in file lab07src.s
+      At line 1124 in file lab07src.s
    Uses
-      At line 1056 in file lab07src.s
+      At line 1061 in file lab07src.s
 Comment: __Vectors_Size used once
 __Vendor_SysTickConfig 00000000
 
@@ -15642,14 +15647,14 @@ Symbol: nFPROT1
       At line 805 in file MKL05Z4.s
    Uses
       At line 806 in file MKL05Z4.s
-Comment: nFPROT1 used once
-nFPROT2 00000000
 
 
 
 ARM Macro Assembler    Page 203 Alphabetic symbol ordering
 Absolute symbols
 
+Comment: nFPROT1 used once
+nFPROT2 00000000
 
 Symbol: nFPROT2
    Definitions
@@ -15676,33 +15681,28 @@ Dummy_Handler 00000000
 
 Symbol: Dummy_Handler
    Definitions
-      At line 1058 in file lab07src.s
+      At line 1063 in file lab07src.s
    Uses
-      At line 1064 in file lab07src.s
-      At line 1066 in file lab07src.s
-      At line 1067 in file lab07src.s
-      At line 1068 in file lab07src.s
       At line 1069 in file lab07src.s
-      At line 1070 in file lab07src.s
       At line 1071 in file lab07src.s
       At line 1072 in file lab07src.s
       At line 1073 in file lab07src.s
       At line 1074 in file lab07src.s
       At line 1075 in file lab07src.s
       At line 1076 in file lab07src.s
+      At line 1077 in file lab07src.s
+      At line 1078 in file lab07src.s
       At line 1079 in file lab07src.s
       At line 1080 in file lab07src.s
-      At line 1082 in file lab07src.s
+      At line 1081 in file lab07src.s
       At line 1084 in file lab07src.s
-      At line 1086 in file lab07src.s
-      At line 1088 in file lab07src.s
+      At line 1085 in file lab07src.s
+      At line 1087 in file lab07src.s
       At line 1089 in file lab07src.s
       At line 1091 in file lab07src.s
       At line 1093 in file lab07src.s
       At line 1094 in file lab07src.s
-      At line 1095 in file lab07src.s
       At line 1096 in file lab07src.s
-      At line 1097 in file lab07src.s
       At line 1098 in file lab07src.s
       At line 1099 in file lab07src.s
       At line 1100 in file lab07src.s
@@ -15723,14 +15723,19 @@ Symbol: Dummy_Handler
       At line 1115 in file lab07src.s
       At line 1116 in file lab07src.s
       At line 1117 in file lab07src.s
+      At line 1118 in file lab07src.s
+      At line 1119 in file lab07src.s
+      At line 1120 in file lab07src.s
+      At line 1121 in file lab07src.s
+      At line 1122 in file lab07src.s
 
 HardFault_Handler 00000000
 
 Symbol: HardFault_Handler
    Definitions
-      At line 1059 in file lab07src.s
+      At line 1064 in file lab07src.s
    Uses
-      At line 1065 in file lab07src.s
+      At line 1070 in file lab07src.s
 
 
 
@@ -15750,9 +15755,9 @@ __initial_sp 00000000
 
 Symbol: __initial_sp
    Definitions
-      At line 1057 in file lab07src.s
-   Uses
       At line 1062 in file lab07src.s
+   Uses
+      At line 1067 in file lab07src.s
 Comment: __initial_sp used once
 4 symbols
 1858 symbols in table
