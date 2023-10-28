@@ -302,7 +302,7 @@ UnsuccessE
 	LDR R0,=FailurePrompt
 	BL PutStringSB
 
-	LDR R0,#QRecord
+	LDR R0,=QRecord
 	BL StatusC
 	B Restart
 	
@@ -320,36 +320,36 @@ handleP   BL      NewLine
             MOVS    R0,#'>'
             BL      PutChar
          
-;---------- load parameters
+;load parameters
             LDR      R1,=QRecord
             LDR      R0,=QBuffer
             LDRB     R2,[R1,#NUM_ENQD]
             LDR      R3,[R1,#OUT_PTR]    
 
-PrintNext   CMP      R2,#0                 ;if end of buffer,
-            BEQ      Quit                  ;then quit
+PrintContinue   CMP      R2,#0                 ;if end of buffer
+            BEQ      Quit                  
 
-;---------- print queue characters
+; print queue characters
             LDRB     R4,[R3,#0]
             PUSH     {R0}
-            MOVS     R0,R4                 ;move char to R0 for printing
-            BL       PutChar
+            MOVS     R0,R4       ;move char to R0
+            BL       PutChar		
             POP      {R0}
 
-            SUBS     R2,R2,#1              ;decrement queue chars left to read
-            ADDS     R3,R3,#1              ;increment OUT_PTR  
+            SUBS     R2,R2,#1      ;decrement queue characters left to read
+            ADDS     R3,R3,#1      ;increment OUT_PTR  
          
             LDR      R4,[R1,#BUF_PAST]
-            CMP      R3,R4                 ;compare OUT_PTR and BUF_PAST
-            BEQ      WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
-            B        PrintNext
+            CMP      R3,R4        ;compare OUT_PTR and BUF_PAST
+            BEQ      QueuePw     ; if OUT_PTR >= BUF_PAST
+            B        PrintContinue
 
-WrapQueue   LDR      R3,[R1,#BUF_STRT]
-            B        PrintNext
+QueuePw   LDR      R3,[R1,#BUF_STRT]
+            B        PrintContinue
          
-Quit        MOVS     R0,#'<'               ;move delimeter to R0
-            BL       PutChar               ;print delimeter
-            BL       NewLine            ;go to next line
+Quit        MOVS     R0,#'<'     ;move < to R0
+            BL       PutChar      ;print <
+            BL       NewLine            
             POP      {R0-R4}
             B        Restart
 	
@@ -374,6 +374,9 @@ handleS ; Status: print the queue�s current InPointer, OutPointer, and NumberE
             ENDP
 ;>>>>> begin subroutine code <<<<<
 ;---------------------------------------------------------------
+; This subroutine takes care of the formatting and printing of the components
+; necessary to output the hex values related to the in and out pointer
+; as well as showing the length of the queue
 ;---------------------------------------------------------------
 StatusC PROC
 	PUSH{R0-R3,LR}
@@ -416,7 +419,9 @@ StatusC PROC
 	ENDP
 	
 
-
+;---------------------------------------------------------------
+;Print a character in the terminal
+;---------------------------------------------------------------
 PutChar		PROC	{R0-R14}
 			PUSH	{R1, R2, R3} 
 			
@@ -438,6 +443,7 @@ PollTx 		LDRB R3,[R1,#UART0_S1_OFFSET]
             ENDP
 
 ;---------------------------------------------------------------
+;Get a character from the terminal
 ;---------------------------------------------------------------
 GetChar		PROC {R0-R13}
 
@@ -455,6 +461,7 @@ PollRx 		LDRB 	R3,[R1,#UART0_S1_OFFSET]
 	
 
 ;---------------------------------------------------------------
+;Get a string from the terminal
 ;---------------------------------------------------------------			
 GetStringSB		PROC	{R0-R14}
 	
@@ -510,6 +517,7 @@ endGetString
             ENDP
 
 ;---------------------------------------------------------------
+;Show a string on the terminal
 ;---------------------------------------------------------------
 
 
@@ -575,23 +583,6 @@ InitQueue PROC
 ;otherwise, returns with the PSR C bit set, (i.e., 1), to report dequeue failure.
 ;---------------------------------------------------------------
 
-	
-;int Dequeue (char *Character, qRecord *Queue) {
-;/***************************************************************/
-;/* Dequeues Character from queue if queue is not empty.        */
-;/* If queue is empty, Character is not changed.                */
-;/* Returns:  1 if failure; 0 otherwise                         */
-;/***************************************************************/
-  ;int Failure = TRUE; the subroutine will return C flag set for false and 0 for succesful
-  ;if (Queue->NumberEnqueued) {
-    ;*Character = *(Queue->OutPointer++);
-    ;(Queue->NumberEnqueued)--;
-    ;if (Queue->OutPointer >= Queue->BufferPast) {
-     ;Queue->OutPointer = Queue->BufferStart;
-    ;}
-    ;Failure = FALSE;
-  ;}
-  ;return (Failure);}
 Dequeue PROC
   PUSH{R2-R7,LR}
     ; Check if it is empty
@@ -660,18 +651,6 @@ EndProgramDeq
 ;/* Returns:  1 if failure; 0 otherwise                         */
 ;/***************************************************************/
 
-;int Enqueue (char Character, qRecord *Queue) {
-  ;int Failure = TRUE;
-
-  ;if (Queue->NumberEnqueued < Queue->BufferSize) {
-    ;*(Queue->InPointer++) = Character;
-    ;(Queue->NumberEnqueued)++;
-    ;if (Queue->InPointer >= Queue->BufferPast) {
-      ;Queue->InPointer = Queue->BufferStart;
-    ;}
-    ;Failure = FALSE;
-  ;}
-  ;return (Failure);}
 Enqueue PROC
   PUSH{R2-R7,LR}
 
@@ -736,20 +715,6 @@ EndSubEnq
 ;to determine the hexadecimal digit values�use bit masks and shifts.)
 ;---------------------------------------------------------------
 PutNumHex PROC
-;void PutNumHex (uint32_t Number) {
-;/***************************************************************/
-;/* Prints hex representation of unsigned word (32-bit) number. */
-;/* Uses PutNumHexB                                             */
-;/***************************************************************/
- ; unsigned int ShiftAmount;
-  
-  ;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 4) {
-   ; PutChar ((char) HEXN2ASCII((Number >> ShiftAmount) & 0x0F));
-  ;}
-  ;PutChar ((char) HEXN2ASCII(Number & 0x0F));
-;}
-
-;for (ShiftAmount = 28; ShiftAmount > 0; ShiftAmount -= 4) {
 
   PUSH {R1-R4,LR}  ; Save registers
   
@@ -811,28 +776,6 @@ EndForHex
 ;in R0, and call your PutNumU subroutine from Lab Exercise Six.)
 ;---------------------------------------------------------------
 PutNumUB PROC
-;/***************************************************************/
-;/* Prints text representation of unsigned word (32-bit) in a   */
-;/* minimum number of characters.                               */
-;/* number.                                                     */
-;/* Uses:  PutString                                            */
-;/***************************************************************/
-  ;/* String for number digits up to 4 billion */
-  ;char String[MAX_WORD_DECIMAL_DIGITS + 1];
-  ;char *StringPtr;
-
-  ;StringPtr = &(String[MAX_WORD_DECIMAL_DIGITS]);
-  ;*StringPtr = 0;
-  
-  ;do {
-    ;/* next least significant digit is remainder of division by 10 */
-    ;*(--StringPtr) = ((char) (Number % 10u)) + '0';
-    ;/* rest of number to print */
-    ;Number /= 10u; 
-  ;} while (Number > 0);
-  ;/* print text digits of number */
-  ;PutStringSB (StringPtr, (MAX_WORD_DECIMAL_DIGITS + 1));
-;} /* PutNumU */
 	PUSH {R0}
 
 	LDR R0,[R0,#0]
@@ -886,6 +829,8 @@ PrintChar   LDR     R0,=putUvar         ;array iteration
 EndPutNum   POP     {R0,R1,R2,PC}              ;for nested subroutine
             ENDP
 
+
+;---------------------------------------------------------------
 
 ;---------------------------------------------------------------
 
