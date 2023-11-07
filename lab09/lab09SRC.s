@@ -21,11 +21,9 @@
 ;****************************************************************
 ;EQUates
 ;Characters
-MAX_STRING	EQU  79
 CR          EQU  0x0D
 LF          EQU  0x0A
 NULL        EQU  0x00
-BS          EQU  0x08
 	
 ; Queue management record field offsets
 IN_PTR      EQU   0
@@ -39,11 +37,7 @@ Q_BUF_SZ    EQU   4   ;Queue buffer contents
 Q_REC_SZ    EQU   18  ;Queue management record
 	
 
-;---for excercise 8
-NUM_SIZE    EQU  16
-WORD_COUNT  EQU  3 
-
-
+	
 ; Queue delimiters for printed output
 Q_BEGIN_CH  EQU   '>'
 Q_END_CH    EQU   '<'
@@ -209,339 +203,180 @@ main
 
 
 	BL Init_UART0_Polling  ; Initialize program
+	BL InitQueue ; Initialize the queue
 
 Restart
 	BL NewLine
 	LDR 	R0,=PutPrompt
-	MOVS 	R1,#MAX_STRING
 	BL		PutStringSB
 
-FstPrompt
-	LDR		R0,=NumeroUno ;first n-word number from the user
-	MOVS 	R1,#WORD_COUNT ; number of words in the input
-	BL 		GetHexIntMulti
+IgnoreChar
 
-	BCS 	UnoInvalid
-	BL 		NewLine
-
-	LDR		R0,=NumeroDos
- 	MOVS 	R1,#WORD_COUNT ; number of words in the input
-	BL		PutStringSB
-
-SecndPrompt
-	LDR 	R0,=NumeroDos ;first n-word number from the user
-	MOVS 	R1,#MAX_STRING
-	BL		GetHexIntMulti
-
-	BCS		DosInvalid
-
-;-----Compute the addition----
-
-	LDR 	R0,=Result			;Load the addres of the first, second numbner and the 
-	LDR 	R1,=NumeroUno		;number of words in  user input 
-	LDR 	R2,=NumeroDos
-	MOVS 	R3,#WORD_COUNT
-	BL 		AddIntMultiU
-	BCS		AddOverflow 		;Check for invalid numbers and send to overflow case
-	BL		NewLine
-
-	LDR 	R0,=SumString
-	MOVS 	R1,#MAX_STRING
-	BL		PutStringSB
-
-	LDR		R0,Result
-	MOVS	R1,#WORD_COUNT
-	BL		PutHexIntMulti
-	BL		NewLine
-	B 		Restart
+	BL GetChar ; get a queue command
+interpretChar
 
 
-;----Show the message for an invalid first number---
-UnoInvalid
-	BL 		NewLine
-	LDR		R0,=PromptInvalid
-	MOVS	R1,#MAX_STRING
-	BL		PutStringSB
-	B		FstPrompt
+	;  dynamic input
 
-;----Show the message for an invalid second number---
-DosInvalid
-	BL 		NewLine
-	LDR		R0,=PromptInvalid
-	MOVS	R1,#MAX_STRING
-	BL		PutStringSB
-	B		SecndPrompt
+	CMP R0, #96 ;Compare r0 to 97
+	BHI HandleConditions ; if the number is higher than 96, then the value is lower case
 
-;----Show the message for when an overflow occurs----
-AddOverflow
-	BL		NewLine
-	LDR		R0,=OverflowPrint
-	MOVS	R1,#MAX_STRING
-	BL		PutStringSB
-	B		Restart
+	ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
 
+HandleConditions ; Verify which letter was entered
+	CMP R0, #'d'
+	BEQ handleD
+	
+	CMP R0, #'e'
+	BEQ handleE
+	
+	CMP R0, #'h'
+	BEQ handleH
+	
+	CMP R0, #'p'
+	BEQ handleP
+	
+	CMP R0, #'s'
+	BEQ handleS
+	
+	B IgnoreChar ; this executes whenever an invalid character is inputted
+
+handleD ; Dequeue a character from the queue
+	BL PutChar
+	BL NewLine
+
+	LDR R0,=QBuffer
+	LDR R1,=QRecord
+	MOVS R2,#Q_BUF_SZ
+
+	BL Dequeue ; call the method to remove from queue
+
+	; verify if the event was successful
+	BCS UnsuccessD
+	
+	LDR R0,=SuccessPrompt ;Show the success message
+	BL PutStringSB
+
+	LDR R0,=QRecord ; load queue record
+	BL StatusC ; show the status
+
+	B Restart ; prompt for another command
+
+UnsuccessD ; show the content for when the case is not successful
+	BL PutChar 
+	LDR R0,=FailurePrompt
+	BL PutStringSB
+
+	LDR R0,=QRecord
+	BL StatusC
+	
+	B Restart
+
+handleE ;Enqueue a character to the queue, prompt to enter a character and then enqueue it
+	BL PutChar
+	BL NewLine
+	
+	LDR R0,=EnqueuePrompt
+	BL PutStringSB ; prompt for a character 
+	
+	LDR R0,=QBuffer
+	LDR R1,=QRecord
+	MOVS R2,#Q_BUF_SZ
+
+	BL GetChar; get the character 
+	BL PutChar
+	BL NewLine
+	
+	BL Enqueue; enqueue the character
+	BCS UnsuccessE ; Check if C flag is set
+	
+	LDR R0,=SuccessPrompt ;Show the success message
+	BL PutStringSB
+
+	LDR R0,=QRecord
+	BL StatusC
+	B Restart
+
+UnsuccessE
+	
+	LDR R0,=FailurePrompt
+	BL PutStringSB
+
+	LDR R0,=QRecord
+	BL StatusC
+	B Restart
+	
+handleH ; Help: List the commands
+	BL PutChar
+	BL NewLine
+	
+	LDR R0,=HelpPrompt
+	BL PutStringSB
+	
+	B Restart
+	
+handleP   
+	BL PutChar
+	BL      NewLine
+	PUSH    {R0-R4}
+	MOVS    R0,#'>'
+	BL      PutChar
+ 
+;load parameters
+	LDR      R1,=QRecord
+	LDR      R0,=QBuffer
+	LDRB     R2,[R1,#NUM_ENQD]
+	LDR      R3,[R1,#OUT_PTR]    
+
+PrintContinue   
+	CMP      R2,#0      ;if end of buffer
+	BEQ      Quit                  
+
+; print queue characters
+	LDRB     R4,[R3,#0]
+	PUSH     {R0}
+	MOVS     R0,R4       ;move char to R0
+	BL       PutChar		
+	POP      {R0}
+
+	SUBS     R2,R2,#1      ;decrement queue characters left to read
+	ADDS     R3,R3,#1      ;increment OUT_PTR  
+ 
+	LDR      R4,[R1,#BUF_PAST]
+	CMP      R3,R4        ;compare OUT_PTR and BUF_PAST
+	BEQ      QueuePw     ; if OUT_PTR >= BUF_PAST
+	B        PrintContinue
+
+QueuePw   
+	LDR      R3,[R1,#BUF_STRT]
+	B        PrintContinue
+ 
+Quit        MOVS     R0,#'<'     ;move < to R0
+	BL       PutChar      ;print <
+	BL       NewLine            
+	POP      {R0-R4}
+	B        Restart
+	
+	
+handleS ; Status: print the queue?s current InPointer, OutPointer, and NumberEnqueued
+	BL PutChar
+	BL NewLine
+	
+	LDR R0,=StatusPrompt
+	BL PutStringSB
+	; Put the address
+	;Print 0x
+	LDR R0,=QRecord ; Show the start of the hex num
+	BL StatusC
+	BL NewLine
+	
+	B Restart 
 
 ;>>>>>   end main program code <<<<<
 ;Stay here
             B       .
             ENDP
 ;>>>>> begin subroutine code <<<<<
-
-
-;Adds the n-word unsigned number in memory starting at the address
-;in R2 to the n-word unsigned number in memory starting at the address in R1, and
-;stores the result to memory starting at the address in R0, where the value in R3 is n.
-;e subroutine uses ADCS to add word by word, starting from the least significant
-;words of the augend and addend and working to the most significant words. If the
-;result is a valid n-word unsigned number, it returns with the APSR C bit clear as the
-;return code for success; otherwise it returns with the APSR C bit set as the return code
-;for unsigned n-word overflow.
-
-
-/* Access to APSR provided as defined in core_cm0plus.h */
-;register APSR_Type APSR __asm("apsr");
-;register unsigned int R6 __asm("r6");
-;register unsigned int R7 __asm("r7");
-
-;int AddIntMultiU (UInt32 *Sum, UInt32 *Augend, UInt32 *Addend, 
-                  ;int NumWords) {
-/*********************************************************************/
-/* Adds two multiword unsigned numbers:  Sum = Augend + Addend       */
-/* If result overflows, returns 1; otherwise returns 0.              */
-/*********************************************************************/
-  ;unsigned int SavedC = 0,
-    ;           SavedR6,
-   ;            SavedR7;
-  ;int Index;
-
-  ;/*Preserve R6 and R7 for APCS compliance */
-  ;SavedR6 = R6;
-  ;SavedR7 = R7;
-
-  ;for (Index = 0; Index < NumWords; Index++) {
-    ;R6 = Augend[Index];
-    ;R7 = Addend[Index];
-    ;APSR.b.C = SavedC;
-    ;__asm("ADCS R6,R6,R7");
-    ;SavedC = APSR.b.C;
-   ; Sum[Index] = R6;
-  ;}
-
-  ;/* Restore original R6 and R7 for APCS compliance */
-  ;R6 = SavedR6;
- ; R7 = SavedR7;
-  ;return (SavedC);
-;}
-
-AddIntMultiU PROC
-	PUSH	{R4-R5,LR}
-
-;--- clear carry bit
-	MOVS	R4,#0
-	LSRS	R4,R4,#1
-
-	MRS		R7,APSR
-; save r6 and r7 for  for APCS compliance
-
-;Start for loop
-	;MOVS 	R0,#0 ; Index = 0
-;----Save r6 and r7----
-  
-	;MOVS 	R4,R6;SavedR6 = R6;
-	;MOVS 	R5,R7;SavedR7 = R7;
-AddIntLoop
-	CMP		R3,#0 ;Compare 
-	BEQ		EndLoopInt;if index < NumWords -> continue
-;----Load the Aug and Add end----	
-	LDM 	R1!,{R5}
-	LDM		R7,{R6}   
-	MSR		APSR,R7
-
-	ADCS	R5,R5,R6
-	STM		R0!,{R5}
-	MRS		R7,APSR
-	SUBS	R3,R3,#1
-	B		AddIntLoop
-	
-	; Call __asm(ADCS R6,R6,R7)
-	;SavedC = APSR.b.C;  ---- Figure how to do this
-	STR R6,[R1,R0] ; Sum[Index] = R6;
-EndLoopInt
-	MSR 	APSR,R7
-	POP		{R4-R5,PC}
-	ENDP
-;----Restore R6 and R7---
-	;MOVS 	R6,R4
-	;MOVS	R7,R5
-	
-	;retrun (SavedC);
-AddIntFail
-;---Set C flag due to failure---
-	MRS 	R3, APSR
-	MOVS 	R4, #0x20
-	LSLS 	R4, R4, #24
-	ORRS 	R3, R3, R4
-	MSR 	APSR, R3
-	B		AddIntEnd
-
-AddIntSuccess
-;----Clear C flag----
-	MRS 	R7,APSR
-	MOVS	R6,#0x20
-	LSLS 	R6,R6,#24
-	BICS 	R7,R7,R6
-	MSR 	APSR,R7
-
-;AddIntEnd
-;	POP{R4-R5,PC}
-;	ENDP
-		
-
-
-;GetHexIntMulti: Gets an n-word unsigned number from the user typed in text
-;hexadecimal representation, and stores it in binary in memory starting at the address in
-;R0, where the value in R1 is n. e subroutine reads characters typed by the user until
-;the enter key is pressed by calling the subroutine GetStringSB. It then converts the
-;ASCII hexadecimal representation input by the user to binary, and it stores the binary
-;value to memory at the address specified in R0. If the result is a valid n-word unsigned
-;number, it returns with the APSR C bit clear; otherwise, it returns with the APSR C bit
-;set. e table below provides an example for n ? 2.
-;Note 1: A string buffer is required for GetStringSB. Although allocating the string
-;buffer on the stack is the preferred implementation, a global string buffer may be used.
-;Note 2: Basic implementation requires 8n uppercase hex digits from the user.
-;Hint: Use 8n ? 1 as the GetStringSB string buffer capacity.
-;(See Extra Credit Opportunities section for extra credit implementation.)
-
-;int GetHexIntMulti (UInt32 *Number, int NumWords) {
-;/*********************************************************************/
-;/* Gets user string input of hex representation of an multiword      */
-;/* unsigned number of NumWords words, and converts it to a binary    */
-;/* unsigned NumWords-word number.                                    */
-;/* If user input is invalid, returns 1; otherwise returns 0.         */  
-;/* Calls:  GetStringSB                                               */
-;/*********************************************************************/
-  ;UInt8 Digit;
-  ;UInt8 String[MAX_HEX_STRING];
-  ;UInt8 *BytePtr;
-  ;UInt8 ByteValue;
-  ;int   NotFinished = TRUE,
-  ;      Index = 0;
-
-  ;if (GetStringSB ((char *) String, MAX_HEX_STRING) == (MAX_HEX_STRING - 1)) {
-    ;BytePtr = ((UInt8 *) Number) + (NumWords << 2);
-    ;while (NotFinished && (Index < (NumWords << 3))) {
-      ;/* Convert most significant digit of byte*/
-      ;Digit = String[Index++];
-      ;/* Convert ASCII value to binary  value */
-      ;if ((Digit >= '0') && (Digit <= '9')) {
-       ; ByteValue =  (UInt8) (Digit - '0');
-      ;}
-      ;else if ((Digit >= 'A') && (Digit <= 'F')) {
-       ; ByteValue =  (UInt8) (Digit - 'A' + 10);
-      ;}
-      ;else {
-       ; NotFinished = FALSE;
-      ;}
-      ;if (NotFinished) {
-        ;/* Convert least significant digit of byte*/
-        ;Digit =String[Index++];
-        ;/* Convert ASCII value to binary  value */
-        ;if ((Digit >= '0') && (Digit <= '9')) {
-         ; Digit =  (UInt8) (Digit - '0');
-        ;}
-        ;else if ((Digit >= 'A') && (Digit <= 'F')) {
-         ; Digit =  (UInt8) (Digit - 'A' + (char) 10);
-        ;}
-       ; else {
-       ;   NotFinished = FALSE;
-      ;  }
-      ;}
-      ;if (NotFinished) {
-     ;   *(--BytePtr) = (ByteValue << 4) | Digit;
-    ;  } /* if (NotFinished:  No errors in byte) */
-   ; } /* while */
-  ;} /* if */
-  ;else {
-   ; NotFinished = FALSE;
-  ;}
-
-  ;/* complement of NotFinished is return result */
- ; return (NotFinished ^ 1);  
-;} /* GetHexIntMulti */
-
-GetHexIntMulti PROC
-	PUSH {R0-R7,LR}
-;if (GetStringSB ((char *) String, MAX_HEX_STRING) == (MAX_HEX_STRING - 1)) {
-	
-LoopHexIntM
-	LDR 	R0,=StringBuffer
-	BL 		GetChar
-
-	;BytePtr = ((UInt8 *) Number) + (NumWords << 2);
-    ;while (NotFinished && (Index < (NumWords << 3))) {
-;----Set C flag----
-InvalidInp
-	MRS 	R3, APSR
-	MOVS 	R4, #0x20
-	LSLS 	R4, R4, #24
-	ORRS 	R3, R3, R4
-	MSR 	APSR, R3
-
-;----Clear C flag----
-ValidInp
-	MRS 	R7,APSR
-	MOVS	R6,#0x20
-	LSLS 	R6,R6,#24
-	BICS 	R7,R7,R6
-	MSR 	APSR,R7
-
-;----End the subroutine----
-EndGetHexMulti
-
-	
-	
-	
-	
-;PutHexIntMulti: Outputs an n-word unsigned number, from memory starting at the
-;address in R0, to the terminal in text hexadecimal representation using 8n hex digits,
-;where the value in R1 is n. e table below provides an example for n ? 2. (Hint: Use
-;PutNumHex from Lab Exercise Seven.)
-
-;void PutHexIntMulti (UInt32 *Number, int NumWords) {
-;/*********************************************************************/
-;/* Prints hex representation of an unsigned multi-word number of     */
-;/* NumWords words.                                                   */
-;/* Calls:  PutNumHex                                                 */
-;/*********************************************************************/
-  ;int Index;
-
-  ;for (Index = NumWords - 1; Index >= 0; Index--) {
-  ;  PutNumHex (Number [Index]);
- ; }
-;} /* PutHexIntMulti */
-PutHexIntMulti PROC
-	PUSH {R0-R2,LR}
-	
-	MOVS R2,R0 ; load input from R0
-	
-	LSLS	R1,R1,#2  ; get the number of bytes
-	SUBS 	R1,R1,#4 ;get leftmost word
-	
-LoopPutHMul  ;  for (Index = NumWords - 1; Index >= 0; Index--) {
-	LDR		R0,[R2,R1]
-	BL 		PutNumHex;putNumHex (Number [Index]);
-	
-	SUBS 	R1,R1,#4	; Get the prevous word
-	BHS 	LoopPutHMul
-	
-	;----End Subroutine---
-	POP{R0-R2,PC}
-	ENDP
-	
-	
-
-
-
 ;---------------------------------------------------------------
 ; This subroutine takes care of the formatting and printing of the components
 ; necessary to output the hex values related to the in and out pointer
@@ -588,45 +423,138 @@ StatusC PROC
 	ENDP
 	
 
+Init_UART0_IRQ PROC
+    PUSH {R0-R2, LR}
+
+    ; Initialize Rx Queue
+    LDR R0, =RxQBuffer
+    LDR R1, =RxQRecord
+    MOVS R2, #Rx_Queue_SZ
+    BL InitQueue
+    
+    ; Initialize Tx Queue
+    LDR R0, =TxQBuffer
+    LDR R1, =TxQRecord
+    MOVS R2, #Tx_Queue_SZ
+    BL InitQueue
+
+    POP {R0-R2, PC}
+    ENDP
+
+UART0_ISR PROC
+    CPSID I ; Mask other interrupts 
+
+    PUSH {R0-R3, R12, LR} ; Push necessary registers
+
+    ; Interrupt source can be found in UART0_S1
+    LDR R0, =UART0_BASE
+    MOVS R1, #UART0_C2_TIE_MASK
+    LDRB R2, [R0, #UART0_C2_OFFSET] ; TIE = 1 in UART0_C2
+    ANDS R2, R2, R1
+    BCS RxInt 
+    
+    MOVS R1, #UART0_S1_TDRE_MASK
+    LDRB R2, [R0, #UART0_S1_OFFSET] ; TDRE = 1 in UART0_S1
+    ANDS R2, R2, R1
+    BCS RxInt
+
+    ; Tx Interrupt Handling
+    LDR R0, =TxQBuffer
+    LDR R1, =TxQRecord
+    MOVS R2, #Tx_Queue_SZ
+    BL Dequeue
+    BCS DequeueFailed
+    
+    MOVS R7, R0
+    STRB R7, [R0, #UART0_D_OFFSET]
+    B RxInt
+
+DequeueFailed
+    MOVS R1, #UART0_C2_T_RI
+    STRB R1, [R0, #UART0_C2_OFFSET] ; Disable TxInterrupt
+
+RxInt
+    MOVS R1, #UART0_S1_RDRF_MASK
+    LDRB R2, [R0, #UART0_S1_OFFSET]
+    ANDS R2, R2, R1
+    CMP R2, #0
+    BEQ ISREnd
+
+    LDR R2, =RxQRecord
+    LDR R7, =UART0_BASE
+    LDRB R0, [R7, #UART0_D_OFFSET]
+    BL Enqueue
+
+ISREnd
+    CPSIE I
+    POP {R0-R3, R12, PC}
+    ENDP
+
+
 ;---------------------------------------------------------------
 ;Print a character in the terminal
 ;---------------------------------------------------------------
-PutChar		PROC	{R0-R14}
-			PUSH	{R1, R2, R3} 
+		
 			
-			
-			LDR R1,=UART0_BASE			
-			MOVS R2,#UART0_S1_TDRE_MASK
-			
-PollTx 		LDRB R3,[R1,#UART0_S1_OFFSET]
+PollTx 		
+	LDRB R3,[R1,#UART0_S1_OFFSET]
 
-			ANDS R3,R3, R2
-			
-			BEQ PollTx
-			
-			;Transmit character stored in R0
-			STRB R0,[R1,#UART0_D_OFFSET]
-			POP		{R1, R2, R3}
-			
-			BX    LR                
-            ENDP
+	ANDS R3,R3, R2
+	
+	BEQ PollTx
+	
+	;Transmit character stored in R0
+	STRB R0,[R1,#UART0_D_OFFSET]
+	POP		{R1, R2, R3}
+	
+	BX    LR                
+	ENDP
+
+PutChar     PROC
+    PUSH    {R0, LR} ; Save R0 and LR
+    
+    ; Load pointers (assuming TxQBuffer and TxQRecord are defined)
+    LDR R0, =TxQBuffer
+    LDR R1, =TxQRecord
+    
+RepeatPut
+    CPSID   I       ; Mask interrupts
+    
+    BL Enqueue     ; enqueue char to TxQ
+    
+    CPSIE   I       ; Unmask interrupts
+    BCS RepeatPut   ; while not enqueue 
+    
+    LDR R0,=UART0_BASE
+    MOVS R1,#UART0_C2_TI_RI
+    STRB R2,[R0,#UART0_C2_OFFSET]
+    
+    POP     {R0, PC} ; Restore R0 and return
+    ENDP
+		
+
 
 ;---------------------------------------------------------------
 ;Get a character from the terminal
 ;---------------------------------------------------------------
-GetChar		PROC {R0-R13}
+GetChar		PROC
+	PUSH 	{R0-R1, LR}
 
-			PUSH 	{R1-R7}
-			LDR 	R1,=UART0_BASE 
-			MOVS 	R2,#UART0_S1_RDRF_MASK 
-			
-PollRx 		LDRB 	R3,[R1,#UART0_S1_OFFSET] 
-			ANDS 	R3,R3,R2
-			BEQ 	PollRx 
-			LDRB 	R0,[R1,#UART0_D_OFFSET] 
-			POP		{R1-R7}
-			BX 		LR
-			ENDP
+	; Load pointers (assuming RxQBuffer and RxQRecord are defined)
+	LDR R0, =RxQBuffer
+	LDR R1, =RxQRecord
+
+	getCharLoop	; do {
+	CPSID I; Mask interrupts
+
+	BL Dequeue ; dequeue char from Rx Queue (critical) 
+
+	CPSIE I; Unmask interrupts
+	BCC getCharLoop; } while ( dequeue is not successful) 
+
+	POP		{R0-R1, PC}
+	ENDP
+
 	
 
 ;---------------------------------------------------------------
@@ -822,7 +750,7 @@ Enqueue	    PROC    {R0-R14}
 	LDRB    R3,[R1,#NUM_ENQD]          ;load enqueued num          
 	LDRB    R4,[R1,#BUF_SIZE]          ;load buffer size
 	CMP     R3,R4                      ;compare enqueued num with size
-	BGE     EnqueueFail             ;if NUM_ENQD >= BUF_SIZE, queue is full, set c flag
+	BGE     EnqueueFailed             ;if NUM_ENQD >= BUF_SIZE, queue is full, set c flag
 	
 	LDR     R3,[R1,#IN_PTR]            ;load mem address of in_ptr
 	STRB    R0,[R3,#0]                 ;store the item to be enqueued in mem address
@@ -1249,17 +1177,6 @@ QRecord    SPACE   Q_REC_SZ
 
 string 		SPACE MAX_STRING
 putUvar 	SPACE 2
-
-;--- from exercise 06
-StringBuffer    SPACE    MAX_STRING
-StringReversal  SPACE    MAX_STRING
-	
-;--- for exercise 08 multiprecision arithmetic
-;Multiprecision Arithemtic
-NumeroUno	    SPACE    NUM_SIZE
-NumeroDos	    SPACE    NUM_SIZE 
-Result          SPACE    NUM_SIZE
-
 ;>>>>>   end variables here <<<<<
             ALIGN
             END
