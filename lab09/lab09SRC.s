@@ -245,157 +245,162 @@ main
         MOVS    R2,#Q_BUF_SZ        ;load queue buffer size
         BL      InitQueue           ;initialize queue structure
 
-        EchoPrompt  LDR     R0,=Prompt          ;load prompt constant
+Restart  
+        LDR     R0,=Prompt          ;load prompt constant
         MOVS    R1,#MAX_STRING
         BL      PutStringSB         ;print prompt
 
-        MainPrompt  BL      GetChar             ;get input     
-        BL      PutChar             ;echo input
+MainPrompt  
+        BL      GetChar             ;get input     
+        BL      PutChar             ;show input
 
-        ;---------- convert input char to uppercase
-        CMP     R0,#'a'
-        BLO     ValidInput
-        CMP     R0,#'z'
-        BHI     ValidInput
-        SUBS    R0,R0,#'a'          ;remove ASCII of lowercase letter
-        ADDS    R0,R0,#'A'          ;add ASCII of uppercase letter
+        ;---Dynamic input 
 
-        ;---------- check if input character is valid
-        ValidInput  CMP     R0,#'D'             ;dequeue if entered D
-        BEQ     command_D
+        CMP R0, #96 ;Compare r0 to 97
+        BHI HandleConditions ; if the number is higher than 96, then the value is lower case
+
+	ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
+
+
+        ;-- check  input character 
+        CMP     R0,#'D'             ;dequeue if entered D
+        BEQ     handleD
         CMP     R0,#'E'             ;enqueue if entered E
-        BEQ     command_E
+        BEQ     handleE
         CMP     R0,#'H'             ;display help if entered H
-        BEQ     command_H
+        BEQ     handleH
         CMP     R0,#'P'             ;print queue contents if entered P
-        BEQ     command_P
+        BEQ     handleP
         CMP     R0,#'S'             ;print queue status if entered S
-        BEQ     command_S
-        BL      MoveCursor          ;add newline
-        B       EchoPrompt          ;repeat prompt if invalid
+        BEQ     handleS
+        BL      NewLine          ;add newline
+        B       Restart          ;repeat prompt if invalid
 
 
-        ;--- perform dequeue operation
-        command_D   BL      MoveCursor
+        ;Dequeue case 
+handleD   
+        BL      NewLine
 
-        ;---------- load input parameters
+        ;--load input parameters
         LDR     R0,=QBuffer
         LDR     R1,=QRecord
         MOVS    R2,#Q_BUF_SZ
 
-        BL      Dequeue             ;remove from queue
-        BCS     DequeueError        ;dequeue failed if flag is set
+        BL      Dequeue      ; branch to dequeue subroutine
+        BCS     UnsuccessD     ; Dequeue failed C flag is set
 
-        BL      PutChar             ;print retrieved value
+        BL      PutChar             ;print the value
         MOVS    R0,#":"
         BL      PutChar
 
         LDR     R0,=QRecord         ;load queue record
-        BL      DequeueStatus       ;display status
-        BL      MoveCursor          ;go to next line
-        B       EchoPrompt          ;echo prompt again
+        BL      DequeueStatus       ;show status
+        BL      NewLine         
+        B       Restart          
 
-        ;---------- echo dequeue failed and restart
-        DequeueError
-        LDR     R0,=Failure         ;load failure message
-        BL      PutStringSB         ;echo message
+        
+UnsuccessD
+        LDR     R0,=FailurePrint         ;load FailurePrint message
+        BL      PutStringSB         
         LDR     R0,=QRecord         ;load queue record
-        BL      QueueStatus         ;display status
-        BL      MoveCursor          ;go to next line
-        B       EchoPrompt          ;echo prompt again
+        BL      QueueStatus         ;show status
+        BL      NewLine          
+        B       Restart          
 
 
-        ;--- perform enqueue operation
-        command_E   BL      MoveCursor          ;move to next line
-        LDR     R0,=Prompt_E        ;load prompt
-        BL      PutStringSB         ;echo prompt
+        
+handleE  
+        BL      NewLine          ;move to next line
+        LDR     R0,=EnqueuePrompt       
+        BL      PutStringSB         ;show prompt
 
-        ;---------- load input params
+        ;load input
         LDR     R0,=QBuffer
         LDR     R1,=QRecord
         MOVS    R2,#Q_BUF_SZ         
 
         BL      GetChar             ;get input char
-        BL      PutChar             ;echo char
+        BL      PutChar             ;show char
         BL      Enqueue             ;add to queue
-        BCS     EnqueueError        ;enqueue failed if flag is set
+        BCS     UnsuccessE        ;enqueue failed if flag is set
 
-        ;---------- print enqueue status in a new line
-        BL      MoveCursor
+        ; Print status
+        BL      NewLine
         LDR     R0,=Success
         BL      PutStringSB
 
-        ;---------- print queue record and repeat prompt
+        ;Print record and restart
         LDR     R0,=QRecord
         BL      QueueStatus
-        BL      MoveCursor
-        B       EchoPrompt
+        BL      NewLine
+        B       Restart
 
-        ;---------- echo enqueue failed and restart
-        EnqueueError
-        BL      MoveCursor
-        LDR     R0,=Failure
+        ;show failure and restart
+UnsuccessE
+        BL      NewLine
+        LDR     R0,=FailurePrint
         BL      PutStringSB
         LDR     R0,=QRecord
         BL      QueueStatus
-        BL      MoveCursor
-        B       EchoPrompt
+        BL      NewLine
+        B       Restart
 
 
-        ;--- display help options
-        command_H   BL      MoveCursor           ;go to next line
+        ; display help 
+handleH   
+        BL      NewLine           
         LDR     R0,=Help             ;load help message
         BL      PutStringSB          ;display message
-        BL      MoveCursor           ;go to next line
-        B       EchoPrompt           ;echo prompt
+        BL      NewLine           
+        B       Restart          
 
-        ;--- display queue status
-        command_S   BL      MoveCursor
+        ;display  status
+handleS   
+        BL      NewLine
         LDR     R0,=Status
         BL      PutStringSB
         LDR     R0,=QRecord
         BL      QueueStatus
-        BL      MoveCursor
-        B       EchoPrompt
+        BL      NewLine
+        B       Restart
 
         ;--- print queued characters
-        command_P   BL      MoveCursor
-        PUSH    {R0-R4}
-        MOVS    R0,#'>'
-        BL      PutChar
+        ; Print queued characters
+handleP   BL      NewLine         ; Move to a new line, print '>'
 
-        ;---------- load parameters
-        LDR     R1,=QRecord
-        LDR     R0,=QBuffer
-        LDRB    R2,[R1,#NUM_ENQD]
-        LDR     R3,[R1,#OUT_PTR]    
+        ; Load parameters
+        LDR     R1,=QRecord     ; QRecord address
+        LDR     R0,=QBuffer     ; QBuffer address
+        LDRB    R2,[R1,#NUM_ENQD]; Load NUM_ENQD
+        LDR     R3,[R1,#OUT_PTR]; Load OUT_PTR
 
-        PrintNext   CMP     R2,#0                 ;if end of buffer,
-        BEQ     Quit                  ;then quit
+ContPrint   CMP     R2,#0         ; Check if queue is empty
+        BEQ     Quit            ; Quit if empty
 
-        ;---------- print queue characters
-        LDRB    R4,[R3,#0]
-        PUSH    {R0}
-        MOVS    R0,R4                 ;move char to R0 for printing
-        BL      PutChar
-        POP     {R0}
+        ; Print queue characters
+        LDRB    R4,[R3,#0]      ; Load character from OUT_PTR
+        PUSH    {R0}            ; Preserve R0
+        MOVS    R0,R4           ; Move character to R0
+        BL      PutChar         ; Print character
+        POP     {R0}            ; Restore R0
 
-        SUBS    R2,R2,#1              ;decrement queue chars left to read
-        ADDS    R3,R3,#1              ;increment OUT_PTR  
+        SUBS    R2,R2,#1        ; Decrement queue size
+        ADDS    R3,R3,#1        ; Increment OUT_PTR
 
-        LDR     R4,[R1,#BUF_PAST]
-        CMP     R3,R4                 ;compare OUT_PTR and BUF_PAST
-        BEQ     WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
-        B       PrintNext
+        LDR     R4,[R1,#BUF_PAST]; Load BUF_PAST
+        CMP     R3,R4           ; Compare OUT_PTR and BUF_PAST
+        BEQ     WrpQ            ; Wrap queue if OUT_PTR >= BUF_PAST
+        B       ContPrint
 
-        WrapQueue   LDR     R3,[R1,#BUF_STRT]
-        B       PrintNext
+WrpQ    LDR     R3,[R1,#BUF_STRT]; Wrap queue by loading BUF_STRT into OUT_PTR
+        B       ContPrint
 
-        Quit        MOVS    R0,#'<'               ;move delimeter to R0
-        BL      PutChar               ;print delimeter
-        BL      MoveCursor            ;go to next line
-        POP     {R0-R4}
-        B       EchoPrompt
+Quit        MOVS    R0,#'<'       ; Delimiter '<'
+        BL      PutChar         ; Print delimiter
+        BL      NewLine         ; Move to next line
+        POP     {R0-R4}         ; Restore registers
+        B       Restart         ; Restart the program
+
 
 ;-------------------------------------------
 ;>>>>>   end main program code <<<<<
@@ -407,505 +412,742 @@ main
 ;>>>>> begin subroutine code <<<<<
 
 
+                 
 ;-------------------------------------------- 
-; UART_ISR subroutine to handle UART0 transmit and interrupts
+; GetChar subroutine for dequeueing characters
+; from the receive queue.
 ;--------------------------------------------
 
-UART0_ISR   PROC    
-	CPSID   I           ;mask  interrupts
-	PUSH    {LR}    
-	LDR     R0,=UART0_BASE  ;load UART0_BASE
-	
-;---if(TxInterrupt)
-	LDRB    R1,[R0,#UART0_C2_OFFSET]
-	MOVS    R2,#0x80
-	ANDS    R1,R1,R2
-	CMP     R1,#0
-	BNE     TxInterruptEnabled ; go to TxInterruptEnabled
+GetChar     PROC  
+        PUSH    {R1,LR}
+        LDR     R1,=RxQRecord
 
-;--If(Not TxInterrupt) { check for Rx Interrupt
-CheckTxInterrupt
-	LDRB    R1,[R0,#UART0_S1_OFFSET]
-	MOVS    R2,#0x10
-	ANDS    R1,R1,R2
-	CMP     R1,#0
-	BEQ     End
-	
-;---------- store received character in R0
-	LDR     R0,=UART0_BASE
-	LDRB    R3,[R0,#UART0_D_OFFSET]
-	
-;---------- enqueue stored character
-	LDR     R1,=RxQRecord           ;load input param for queue
-	MOVS    R0,R3
-	BL      Enqueue
-	BL      End
-	
-;---------- Tx Interrupt is enabled
-TxInterruptEnabled
-	LDRB    R1,[R0,#UART0_S1_OFFSET]
-	MOVS    R2,#0x80
-	ANDS    R1,R1,R2
-	CMP     R1,#0
-	BEQ     CheckTxInterrupt
-	
-;---------- dequeue character from Tx queue
-	LDR     R1,=TxQRecord           ;load input param for queue
-	MOVS    R2,#Q_BUF_SZ
-	BL      Dequeue
-	
-;---------- if dequeue is unsuccessul, disable Tx interrupt
-	BCS     DisableTxInterrupt
-	
-;---------- if dequeue is successful, write char to UART0_D
-	LDR     R1,=UART0_BASE
-	STRB    R0,[R1,#UART0_D_OFFSET] ;store transmit char in R0
-	B       End
+GetCharLoop 
+        CPSID   I                       ; Mask interrupts
+        BL      Dequeue                 ; Perform dequeue operation
+        CPSIE   I                       ; Enable interrupts
+        BCS     GetCharLoop             ; Retry if dequeue was unsuccessful
+        
+        POP     {R1,PC}
+        ENDP
 
-;---------- Tx Interrupt is disabled
-DisableTxInterrupt
-	MOVS    R1,#UART0_C2_T_RI
-	STRB    R1,[R0,#UART0_C2_OFFSET]
-	B       End
+
+;-------------------------------------------- 
+; PutChar subroutine for enqueueing characters into the transmit queue
+;--------------------------------------------
+
+PutChar     PROC    {R0-R14}
+        PUSH    {R0,R1,LR}
+        LDR     R1,=TxQRecord
+
+PutCharLoop CPSID   I                       ; Mask interrupts
+        BL      Enqueue                 ; Perform enqueue operation
+        CPSIE   I                       ; Enable interrupts
+        BCS     PutCharLoop             ; Retry if enqueue was unsuccessful
+        
+; Enable Tx interrupts
+        LDR     R0,=UART0_BASE
+        MOVS    R1,#UART0_C2_TI_RI
+        STRB    R1,[R0,#UART0_C2_OFFSET]
+        
+        POP     {R0,R1,PC}
+        ENDP
+
+
+
+;---------------------------------------------------------------
+;Prints to the terminal screen the text hexadecimal representation of the
+;unsigned word value in R0. (For example, if R0 contains 0x000012FF, then 000012FF
+;should print on the terminal. Note: 12FF would not be acceptable. Do not use division
+;to determine the hexadecimal digit values�use bit masks and shifts.)
+;---------------------------------------------------------------
+PutNumHex PROC
+
+  PUSH {R1-R4,LR}  ; Save registers
+  
+  ; Initialize ShiftAmount to 28
+  MOVS R3, #32
+
+ForHex
+  CMP R3, #0      ; Check if ShiftAmount >= 0
+  BLT EndForHex   ; If not, exit loop
+
+
+  ; Shift and mask
+
+  MOVS R4, #0x0F   ; Mask for lower 4 bits
+  
+  MOVS R2,R0
+  LSRS R2, R2, R3  ; Shift right by 4 bits
+  ANDS R2, R2, R4  ; Mask out upper bits
+
+  CMP R2,#10
+  BGE     ConvertToAF                ;if ASCII value >= 10,
+  ADDS    R2,#'0'                    ;else, add 0 to ASCII
+  B       PrintX
+  CMP R3, #0      ; Check if ShiftAmount >= 0
+  BLT EndForHex   ; If not, exit loop
+
+ConvertToAF
+  ADDS    R2,R2,#55 ;Convert to uppercase
+  
+PrintX
+	PUSH    {R0}                       ;keep input unchanged
+	MOVS    R0,R2
+	BL      PutChar
+	POP     {R0}
 	
-;---------- unmask interrupts and return
-End         CPSIE   I
-	POP     {PC}
+	MOVS    R2,#0                     ;reset R4
+	
+	SUBS    R3,R3,#4                  ;decrement loop counter
+	B       ForHex             ;loop
+
+
+EndForHex
+  POP {R1-R4,PC}  ; Restore registers and return
+  ENDP
+;---------------------------------------------------------------
+;Prints to the terminal screen the text decimal representation of the
+;unsigned byte value in R0. (For example, if R0 contains 0x003021101, then 1 should
+;print on the terminal. Note: 001 would also be acceptable, as the text decimal
+;representation of 0x01.) (Hint: use a mask to preserve only the least byte of the word
+;in R0, and call your PutNumU subroutine from Lab Exercise Six.)
+;---------------------------------------------------------------
+PutNumUB PROC
+	PUSH {R0}
+
+	LDR R0,[R0,#0]
+	MOVS R4,#0xFF
+	ANDS R0,R0,R4
+	BL PutNumU
+	
+	
+	POP {R0}
 	ENDP
 
 
 
+;---------------------------------------------------------------
+;---------------------------------------------------------------
+
+PutNumU     PROC    
+        PUSH    {R0,R1,R2,LR}              ;for nested subroutine
+        MOVS    R2,#0                      ;initalize array offset
+                
+DIV10      
+        CMP     R0,#10                     ;check if num < 10
+        BLT     EndPutNumU
+                
+        MOVS    R1,R0                      ;dividend in R1
+        MOVS    R0,#10                     ;divisor is 10
+        BL      DIVU                       ;divide
+                
+        PUSH    {R0}
+        LDR     R0,=putUvar
+
+        STRB    R1,[R0,R2]
+        ADDS    R2,R2,#1
+        POP     {R0}
+        B       DIV10                      ;keep diving by 10 until it can't
+                
+EndPutNumU  ADDS    R0,R0,#'0'                 ;convert to ascii
+        BL      PutChar                    ;echo to terminal
+        SUBS    R2,R2,#1                   ;decrement string array
+
+PrintChar   LDR     R0,=putUvar         ;array iteration
+        CMP     R2,#0
+        BLT     EndPutNum
+
+        LDRB    R1,[R0,R2]
+        MOVS    R0,R1
+
+        ADDS    R0,R0,#'0'                 ;convert to ascii
+        BL      PutChar                    ;echo to terminal
+
+        SUBS    R2,R2,#1
+        B       PrintChar
+                
+EndPutNum   
+        POP     {R0,R1,R2,PC}              ;for nested subroutine
+        ENDP
+
+
+
+
+;--------------------------------------------
+; Perfdorms integer division
+;--------------------------------------------
+
+DIVU 		PROC 	{R2-R14} ; 
+        PUSH{R2, R3, R4}
+        
+        CMP R0, #0 ; Check if R0 is = 0
+        
+        BEQ DivB0
+
+        
+        MOVS R2, #0 ;
+
+WhileLoopD
+        CMP R1, R0				; while(R0 > R1){
+        BLO Remainder  
+        
+        ADDS R2, R2, #1 		; Quotient++
+        SUBS R1, R1, R0 		; Divisor -= Dividend 
+        
+        B WhileLoopD			;}
+        
+        
+Remainder	
+        
+        MOVS R0, R2 ; New Quotient 
+        
+        MRS R3, APSR
+        MOVS R4, #0x20
+        LSLS R4, R4, #24
+        BICS R3, R3, R4
+        MSR APSR, R3
+        
+        B EndDivu
+        
+DivB0			 
+        MRS R3, APSR
+        MOVS R4, #0x20
+        LSLS R4, R4, #24
+        ORRS R3, R3, R4
+        MSR APSR, R3
+        
+        
+EndDivu
+        
+        POP{R2, R3, R4}
+        BX	LR
+        ENDP 
+				
+				
+		
+
+
 ;-------------------------------------------- 
-; Init_UART0_IRQ subroutine
+; GetStringSB subroutine
 ;
-; Initializes KL05 for interrupt-based serial I/O
-; with UART0 through Port A pins 1 and 2
+; Prevents overrun of the buffer capacity specified in R1, inputs a string from the
+; terminal keyboard to memory starting at the address in R0 and adds null termination
 ; 
-; Input : None
+; Input : R0 - Address in string buffer, 
+;         R1 - Bytes in string buffer
+; Output: R0 - String buffer in memory
+;--------------------------------------------
+
+GetStringSB PROC    {R1-R14}
+            PUSH    {R0-R3,LR}
+            
+            MOVS    R2,#0                     ;initalize string offset
+            MOVS    R3,R0                     ;save input char      
+            
+Input       BL      GetChar                   ;get next char of string
+
+            CMP     R0,#CR                    ;check for carrige return
+            BEQ     EndGetStringSB            ;end
+
+            CMP     R1,#1                     ;check if string ended
+            BEQ     Input                                              
+
+            CMP     R0,#BS                    ;check for backspace
+            BEQ     Input_BS
+
+            BL      PutChar                   ;show to terminal
+            STRB    R0,[R3,R2]                ;store input char in string array
+
+            SUBS    R1,R1,#1                  ;decrement number of chars left to read
+
+            ADDS    R2,R2,#1                  ;add string's offset index           
+            B       Input                     ;loop
+
+Input_BS    CMP     R2,#0
+            BEQ     Input
+            SUBS    R2,R2,#1                  ;decrease offset
+            B       Input
+
+EndGetStringSB
+            MOVS    R0,#0                     ;null termination
+            STRB    R0,[R3,R2]
+            POP     {R0-R3,PC}                ;for nested subroutine
+            ENDP
+
+
+
+;-------------------------------------------- 
+; PutStringSB subroutine
+;
+; Prevents overrun of the buffer capacity specified in R1, displays a null-terminated
+; string to the terminal screen from memory starting at the address in R0.
+; 
+; Input : R0 - String buffer in memory
+;         R1 - Bytes in string buffer
 ; Output: None
 ;--------------------------------------------
 
-Init_UART0_IRQ  PROC  {R0-R14}
-            PUSH {R0-R2,LR}
-
-;---------- initialize Rx queue buffer
-            LDR     R1,=RxQRecord
-            LDR     R0,=RxQBuffer
-            MOVS    R2,#Q_BUF_SZ
-            BL      InitQueue
-
-;---------- initialize Tx queue buffer
-            LDR     R1,=TxQRecord
-            LDR     R0,=TxQBuffer
-            MOVS    R2,#Q_BUF_SZ
-            BL      InitQueue
-
-            LDR     R0,=SIM_SOPT2                           ;connect sources
-            LDR     R1,=SIM_SOPT2_UART0SRC_MASK             
-            LDR     R2,[R0,#0]                              ;current SIM_SOPT2 value
-            BICS    R2,R2,R1                                ;clear bits of UART0SRC
-            LDR     R1,=SIM_SOPT2_UART0SRC_MCGFLLCLK        
-            ORRS    R2,R2,R1                                ;UART0 bits changed
-            STR     R2,[R0,#0]                              ;update SIM_SOPT2
+PutStringSB PROC    {R0-R14}
+            PUSH    {R0-R2,LR}
             
-            LDR     R0,=SIM_SOPT5                           ;set SIM_SOPT5 for UART0 external
-            LDR     R1,= SIM_SOPT5_UART0_EXTERN_MASK_CLEAR
-            LDR     R2,[R0,#0]                              ;current SIM_SOPT5 value
-            BICS    R2,R2,R1                                ;UART0 bits cleared
-            STR     R2,[R0,#0]                              ;update SIM_SOPT5
+            CMP     R1,#0                     ;if all characters have been processed
+            BEQ     EndPutStringSB            ;end
             
-            LDR     R0,=SIM_SCGC4                           ;enable SIM_SCGC4 as clock
-            LDR     R1,=SIM_SCGC4_UART0_MASK                
-            LDR     R2,[R0,#0]                              ;current SIM_SCGC4 value
-            ORRS    R2,R2,R1                                ;only UART0 bit set
-            STR     R2,[R0,#0]                              ;update SIM_SCGC4
-    
-            LDR     R0,=SIM_SCGC5                           ;enable clock
-            LDR     R1,= SIM_SCGC5_PORTB_MASK 
-            LDR     R2,[R0,#0]                              ;current SIM_SCGC5 value
-            ORRS    R2,R2,R1                                ;only PORTB bit set
-            STR     R2,[R0,#0]                              ;update SIM_SCGC5
+            ADDS    R1,R1,R0
+            MOVS    R2,R0                     ;save R0 to R2
+
+ReadChar    LDRB    R0,[R2,#0]
             
-            LDR     R0,=PORTB_PCR2
-            LDR     R1,=PORT_PCR_SET_PTB2_UART0_RX
-            STR     R1,[R0,#0]                              ;port B pin 2 connects to UART0 Rx
-             
-            LDR     R0,=PORTB_PCR1
-            LDR     R1,=PORT_PCR_SET_PTB1_UART0_TX
-            STR     R1,[R0,#0]                              ;port B pin 1 connects to UART0 Tx
-
-;---------- load base address
-            LDR     R0,=UART0_BASE
-             
-;---------- disable UART0
-            MOVS    R1,#UART0_C2_T_R
-            LDRB    R2,[R0,#UART0_C2_OFFSET]
-            BICS    R2,R2,R1
-            STRB    R2,[R0,#UART0_C2_OFFSET]
+            CMP     R0,#NULL                  ;if none
+            BEQ     EndPutStringSB            ;end
+            BL      PutChar                   ;show to terminal
             
-;---------- set UART0_IRQ priority
-            LDR     R0,=UART0_IPR
-            LDR     R1,=NVIC_IPR_UART0_MASK
-            LDR     R2,=NVIC_IPR_UART0_PRI_3
-            LDR     R3,[R0,#0]
-            BICS    R3,R3,R1
-            ORRS    R3,R3,R2
-            STR     R3,[R0,#0]
-
-;---------- clear pending UART0 Interrupts
-            LDR     R0,=NVIC_ICPR
-            LDR     R1,=NVIC_ICPR_UART0_MASK
-            STR     R1,[R0,#0]
-
-;---------- unmask UART0 interrupts
-            LDR     R0,=NVIC_ISER
-            LDR     R1,=NVIC_ISER_UART0_MASK
-            STR     R1,[R0,#0]
-
-;---------- initialize UART0 for 8N1 format at 9600 baud rate
-            LDR     R0,=UART0_BASE
-            MOVS    R1,#UART0_BDH_9600
-            STRB    R1,[R0,#UART0_BDH_OFFSET]
-            MOVS    R1,#UART0_BDL_9600
-            STRB    R1,[R0,#UART0_BDL_OFFSET]
-
-;---------- set UART0 char format for serial bit stream and clear flags
-            MOVS    R1,#UART0_C1_8N1
-            STRB    R1,[R0,#UART0_C1_OFFSET]
-            MOVS    R1,#UART0_C3_NO_TXINV
-            STRB    R1,[R0,#UART0_C3_OFFSET]
-            MOVS    R1,#UART0_C4_NO_MATCH_OSR_16
-            STRB    R1,[R0,#UART0_C4_OFFSET]
-            MOVS    R1,#UART0_C5_NO_DMA_SSR_SYNC
-            STRB    R1,[R0,#UART0_C5_OFFSET]
-            MOVS    R1,#UART0_S1_CLEAR_FLAGS
-            STRB    R1,[R0,#UART0_S1_OFFSET]
-            MOVS    R1,#UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS
-            STRB    R1,[R0,#UART0_S2_OFFSET]
+            ADDS    R2,R2,#1                  ;point to next value
+            CMP     R2,R1
+            BNE     ReadChar                  ;loop
             
-;---------- enable UART0
-            MOVS    R1,#UART0_C2_T_R
-            STRB    R1,[R0,#UART0_C2_OFFSET]
-            
-            POP     {R0-R2,PC}
-            ENDP 
+EndPutStringSB
+            POP     {R0-R2,PC}                ;for nested subroutine
+            ENDP
 
+
+
+
+;-------------------------------------------- 
+; NewLine subroutine
+;
+; show character with a carriage return
+; and move the cursor to the next line
+;--------------------------------------------
+
+NewLine  PROC    {R0-R14}
+            PUSH    {R0,LR}                    ;for nested subroutine
+           
+            MOVS    R0,#CR
+            BL      PutChar
+            MOVS    R0,#LF
+            BL      PutChar
  
-                 
-;-------------------------------------------- 
-; GetChar subroutine for dequeueing characters
-; from receive queue.
-;
-; Input : None
-; Output: R0 - Character dequeued from receive queue 
-;--------------------------------------------
-
-GetChar     PROC    {R1-R14}
-            PUSH    {R1,LR}
-            LDR     R1,=RxQRecord
-
-GetCharLoop CPSID   I                       ;mask interrupts
-            BL      Dequeue                 ;perform dequeue operation
-            CPSIE   I                       ;enable interrupts
-            BCS     GetCharLoop
-            
-            POP     {R1,PC}
+            POP     {R0,PC}                    ;for nested subroutine
             ENDP
 
 
 
+
+
 ;-------------------------------------------- 
-; PutChar subroutine for enqueueing characters
-; to transmit queue.
+; InitQueue subroutine for initializing FIFO queue 
 ;
-; Input : R0 - Character to enqueue to transmit queue
-; Output: None 
-;--------------------------------------------
-
-PutChar     PROC    {R0-R14}
-            PUSH    {R0,R1,LR}
-            LDR     R1,=TxQRecord
-
-PutCharLoop CPSID   I                       ;mask interrupts
-            BL      Enqueue                 ;perform enqueue operation
-            CPSIE   I                       ;enable interrupts
-            BCS     PutCharLoop
-            
-;---------- enable Tx interrupts
-            LDR     R0,=UART0_BASE
-            MOVS    R1,#UART0_C2_TI_RI
-            STRB    R1,[R0,#UART0_C2_OFFSET]
-            
-            POP     {R0,R1,PC}
-            ENDP
-
-
-
-;-------------------------------------------- 
-; InitQueue subroutine for initializing circular
-; FIFO queue structure
-; 
-; Input : R0 - Memory location of queue buffer
-;         R1 - Address to place Queue record structure
-;         R2 - Size of queue structure
-; Output: R1 - Queue record structure
 ;--------------------------------------------
 
 InitQueue   PROC    {R0-R14}
-            PUSH    {R0-R2}
-            
-            STR     R0,[R1,#IN_PTR]            ;store mem address of front of queue in buffer
-            STR     R0,[R1,#OUT_PTR]           ;store mem address in OUT_PTR
-            STR     R0,[R1,#BUF_STRT]          ;store mem address in BUF_START
-            
-            ADDS    R0,R0,R2                   ;last buffer slot
-            STR     R0,[R1,#BUF_PAST]          ;store BUF_PAST in last buffer slot
+        PUSH    {R0-R2}
+        
+        STR     R0,[R1,#IN_PTR]            ;store mem address of front of queue in buffer
+        STR     R0,[R1,#OUT_PTR]           ;store mem address in OUT_PTR
+        STR     R0,[R1,#BUF_STRT]          ;store mem address in BUF_START
+        
+        ADDS    R0,R0,R2                   ;last buffer slot
+        STR     R0,[R1,#BUF_PAST]          ;store BUF_PAST in last buffer slot
 
-            STRB    R2,[R1,#BUF_SIZE]          ;store BUF_SIZE with size in R2
+        STRB    R2,[R1,#BUF_SIZE]          ;store BUF_SIZE with size in R2
 
-            MOVS    R0,#0                     ;initialize NUM_ENQD to zero
-            STRB    R0,[R1,#NUM_ENQD]         ;store in 6th slot of buffer
-            
-            POP     {R0-R2}
-            BX      LR
-            ENDP
+        MOVS    R0,#0                     ;initialize NUM_ENQD to zero
+        STRB    R0,[R1,#NUM_ENQD]         ;store in 6th slot of buffer
+        
+        POP     {R0-R2}
+        BX      LR
+        ENDP
+
 
 
 
 ;-------------------------------------------- 
+; UART_ISR subroutine to handle UART0 transmit and interrupts
+;--------------------------------------------
+UART0_ISR   PROC    
+    CPSID   I               ; Mask interrupts
+    PUSH    {LR}            ; Push link register onto the stack
+    LDR     R0,=UART0_BASE  ; Load UART0_BASE address
+    
+    ; Check if TxInterrupt is enabled
+    LDRB    R1,[R0,#UART0_C2_OFFSET]
+    MOVS    R2,#0x80
+    ANDS    R1,R1,R2
+    CMP     R1,#0
+    BNE     TxIntEnbld      ; Go to TxIntEnbld if TxInterrupt is enabled
+
+CheckTxInterrupt
+    ; Check for Rx Interrupt
+    LDRB    R1,[R0,#UART0_S1_OFFSET]
+    MOVS    R2,#0x10
+    ANDS    R1,R1,R2
+    CMP     R1,#0
+    BEQ     End              ; Exit if no Rx Interrupt
+
+    ; Store received character in R0
+    LDR     R0,=UART0_BASE
+    LDRB    R3,[R0,#UART0_D_OFFSET]
+    
+    ; Enqueue stored character
+    LDR     R1,=RxQRecord    ; Load input param for queue
+    MOVS    R0,R3
+    BL      Enqueue
+    BL      End
+    
+TxIntEnbld
+    ; Check if Tx Interrupt is enabled
+    LDRB    R1,[R0,#UART0_S1_OFFSET]
+    MOVS    R2,#0x80
+    ANDS    R1,R1,R2
+    CMP     R1,#0
+    BEQ     CheckTxInterrupt
+    
+    ; Dequeue character from Tx queue
+    LDR     R1,=TxQRecord    ; Load input param for queue
+    MOVS    R2,#Q_BUF_SZ
+    BL      Dequeue
+    
+    ; If dequeue is unsuccessful, disable Tx interrupt
+    BCS     TxIntDislbd
+    
+    ; If dequeue is successful, write char to UART0_D
+    LDR     R1,=UART0_BASE
+    STRB    R0,[R1,#UART0_D_OFFSET] ; Store transmit char in R0
+    B       End
+
+TxIntDislbd
+    MOVS    R1,#UART0_C2_T_RI
+    STRB    R1,[R0,#UART0_C2_OFFSET] ; Disable Tx interrupt
+    B       End
+    
+End
+    CPSIE   I               ; Unmask interrupts
+    POP     {PC}            ; Pop program counter from the stack
+    ENDP                    ; End procedure
+
+
+
+
+;-------------------------------------------------
+; Init_UART0_IRQ Initializes KL05 for 
+; serial communication using UART0.
+;-------------------------------------------------
+
+Init_UART0_IRQ  PROC  {R0-R14}
+        PUSH {R0-R2,LR}
+
+        ; Initialize Rx and Tx queue buffers
+        LDR     R1,=RxQRecord
+        LDR     R0,=RxQBuffer
+        MOVS    R2,#Q_BUF_SZ
+        BL      InitQueue
+
+        LDR     R1,=TxQRecord
+        LDR     R0,=TxQBuffer
+        MOVS    R2,#Q_BUF_SZ
+        BL      InitQueue
+
+        ; Configure UART0 pins and clock
+        LDR     R0,=SIM_SOPT2
+        LDR     R1,=SIM_SOPT2_UART0SRC_MCGFLLCLK
+        LDR     R2,[R0,#0]
+        BICS    R2,R2,R1
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SOPT5
+        LDR     R1,= SIM_SOPT5_UART0_EXTERN_MASK_CLEAR
+        LDR     R2,[R0,#0]
+        BICS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SCGC4
+        LDR     R1,=SIM_SCGC4_UART0_MASK
+        LDR     R2,[R0,#0]
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SCGC5
+        LDR     R1,= SIM_SCGC5_PORTB_MASK 
+        LDR     R2,[R0,#0]
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=PORTB_PCR2
+        LDR     R1,=PORT_PCR_SET_PTB2_UART0_RX
+        STR     R1,[R0,#0]
+
+        LDR     R0,=PORTB_PCR1
+        LDR     R1,=PORT_PCR_SET_PTB1_UART0_TX
+        STR     R1,[R0,#0]
+
+        ; Load base address
+        LDR     R0,=UART0_BASE
+
+        ; Disable UART0
+        MOVS    R1,#UART0_C2_T_R
+        LDRB    R2,[R0,#UART0_C2_OFFSET]
+        BICS    R2,R2,R1
+        STRB    R2,[R0,#UART0_C2_OFFSET]
+
+        ; Set UART0_IRQ priority
+        LDR     R0,=UART0_IPR
+        LDR     R1,=NVIC_IPR_UART0_MASK
+        LDR     R2,=NVIC_IPR_UART0_PRI_3
+        LDR     R3,[R0,#0]
+        BICS    R3,R3,R1
+        ORRS    R3,R3,R2
+        STR     R3,[R0,#0]
+
+        ; Clear pending UART0 Interrupts
+        LDR     R0,=NVIC_ICPR
+        LDR     R1,=NVIC_ICPR_UART0_MASK
+        STR     R1,[R0,#0]
+
+        ; Unmask UART0 interrupts
+        LDR     R0,=NVIC_ISER
+        LDR     R1,=NVIC_ISER_UART0_MASK
+        STR     R1,[R0,#0]
+
+        ; Initialize UART0 for 8N1 format at 9600 baud rate
+        LDR     R0,=UART0_BASE
+        MOVS    R1,#UART0_BDH_9600
+        STRB    R1,[R0,#UART0_BDH_OFFSET]
+        MOVS    R1,#UART0_BDL_9600
+        STRB    R1,[R0,#UART0_BDL_OFFSET]
+
+        ; Set UART0 char format and clear flags
+        MOVS    R1,#UART0_C1_8N1
+        STRB    R1,[R0,#UART0_C1_OFFSET]
+        MOVS    R1,#UART0_C3_NO_TXINV
+        STRB    R1,[R0,#UART0_C3_OFFSET]
+        MOVS    R1,#UART0_C4_NO_MATCH_OSR_16
+        STRB    R1,[R0,#UART0_C4_OFFSET]
+        MOVS    R1,#UART0_C5_NO_DMA_SSR_SYNC
+        STRB    R1,[R0,#UART0_C5_OFFSET]
+        MOVS    R1,#UART0_S1_CLEAR_FLAGS
+        STRB    R1,[R0,#UART0_S1_OFFSET]
+        MOVS    R1,#UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS
+        STRB    R1,[R0,#UART0_S2_OFFSET]
+
+        ; Enable UART0
+        MOVS    R1,#UART0_C2_T_R
+        STRB    R1,[R0,#UART0_C2_OFFSET]
+
+        POP     {R0-R2,PC}
+        ENDP
+
+ 
+;-------------------------------------------- 
 ; Dequeue subroutine
-;
-; Remove an element from the circular FIFO Queue
-; 
-; Input : R1 - Address of Queue record structure
-; Output: R0 - Character that has been dequeued
-;         R1 - Queue record structure
-;         C  - 1 (failure) or 0 (success)
+; Remove an element from the Queue
 ;--------------------------------------------
 
 Dequeue     PROC    {R1-R14}
-            PUSH    {R1-R4}
-            
-            LDRB    R3,[R1,#NUM_ENQD]          ;load enqueued number in R3
-            CMP     R3,#0                      ;if 0, set PSR C flag
-            BLE     DequeueFailed
-             
-            LDR     R4,[R1,#OUT_PTR]           ;load OUT_PTR in R4
-            LDRB    R0,[R4,#0]                 ;place removed item in R0
-            
-            LDRB    R3,[R1,#NUM_ENQD]          ;load enqueued number
-            SUBS    R3,R3,#1                   ;decrement num of enqueued element
-            STRB    R3,[R1,#NUM_ENQD]          ;store element to buffer
-            
-            ADDS    R4,R4,#1                   ;increment OUT_PTR location
-            
-            LDR     R3,[R1,#BUF_PAST]
-            CMP     R3,R4                      ;compare OUT_PTR to BUF_PAST
-            BEQ     DequeueWrapBuffer          ;if OUT_PTR >= BUF_PAST, wrap the queue
-            
-            STR     R4,[R1,#OUT_PTR] 
-            B       DequeueSuccess
-          
-;---------- wrap around the circular queue
-DequeueWrapBuffer
-            LDR     R3,[R1,#BUF_STRT]
-            STR     R3,[R1,#OUT_PTR]
+        PUSH    {R1-R4}
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        CMP     R3,#0                  ; If 0, set PSR C flag
+        BLE     DequeueFailure
+        
+        LDR     R4,[R1,#OUT_PTR]       ; Load OUT_PTR
+        LDRB    R0,[R4,#0]             ; Place removed item in R0
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        SUBS    R3,R3,#1               ; Decrement num of enqueued elements
+        STRB    R3,[R1,#NUM_ENQD]      ; Store updated count
+        
+        ADDS    R4,R4,#1               ; Increment OUT_PTR location
+        
+        LDR     R3,[R1,#BUF_PAST]
+        CMP     R3,R4                  ; Compare OUT_PTR to BUF_PAST
+        BEQ     DequeueWrpB      ; If OUT_PTR >= BUF_PAST, wrap the queue
+        
+        STR     R4,[R1,#OUT_PTR] 
+        B       DequeueSucessfull
+        
+; Wrap around the circular queue
+DequeueWrpB
+        LDR     R3,[R1,#BUF_STRT]
+        STR     R3,[R1,#OUT_PTR]
 
-;---------- clear C flag because it successfully dequeued
-DequeueSuccess
-            MRS     R1,APSR
-            MOVS    R3,#C_MASK
-            LSLS    R1,R1,#C_SHIFT
-            BICS    R1,R1,R3
-            MSR     APSR,R1
-            B       DequeueEnd
+; Clear C flag because it successfully dequeued
+DequeueSucessfull
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R1,R1,#C_SHIFT
+        BICS    R1,R1,R3
+        MSR     APSR,R1
+        B       DequeueEnd
 
-;---------- set C flag because it failed to dequeue
-DequeueFailed
-            MRS     R1,APSR
-            MOVS    R3,#C_MASK  
-            LSLS    R3,R3,#C_SHIFT 
-            ORRS    R1,R1,R3
-            MSR     APSR,R1
-            B       DequeueEnd
+; Set C flag because it failed to dequeue
+DequeueFailure
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK  
+        LSLS    R3,R3,#C_SHIFT 
+        ORRS    R1,R1,R3
+        MSR     APSR,R1
+        B       DequeueEnd
 
-;---------- end Dequeue subroutine
-DequeueEnd  POP     {R1-R4}
-            BX      LR
-            ENDP
-                
-                
+; End Dequeue subroutine
+DequeueEnd  
+        POP     {R1-R4}
+        BX      LR
+        ENDP        
 
 ;-------------------------------------------- 
 ; Enqueue subroutine
-;
-; Put an element into the circular FIFO Queue
 ; 
-; Input : R0 - Character to enqueue
-;         R1 - Address of the queue record structure
-; Output: R1 - Queue record structure
-;         C  - 1 (failure) or 0 (success)
+; Description:
+; Put an element into the  Queue
+; 
 ;--------------------------------------------
 
 Enqueue     PROC    {R0-R14}
-            PUSH    {R1-R4}
-            
-            LDRB    R3,[R1,#NUM_ENQD]          ;load enqueued num          
-            LDRB    R4,[R1,#BUF_SIZE]          ;load buffer size
-            CMP     R3,R4                      ;compare enqueued num with size
-            BGE     EnqueueFailed              ;if NUM_ENQD >= BUF_SIZE, queue is full
-            
-            LDR     R3,[R1,#IN_PTR]            ;load mem address of in_ptr
-            STRB    R0,[R3,#0]                 ;store the item to be enqueued in mem address
+        PUSH    {R1-R4}
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        LDRB    R4,[R1,#BUF_SIZE]      ; Load buffer size
+        CMP     R3,R4                  ; Compare enqueued number with size
+        BGE     EnqueueFailure          ; If NUM_ENQD >= BUF_SIZE, queue is full
+        
+        LDR     R3,[R1,#IN_PTR]        ; Load memory address of IN_PTR
+        STRB    R0,[R3,#0]             ; Store the item to be enqueued in the memory address
 
-;---------- increment IN_PTR
-            ADDS    R3,R3,#1
-            STR     R3,[R1,#IN_PTR]
-            
-;---------- increment enqueued elements number
-            LDRB    R3,[R1,#NUM_ENQD]
-            ADDS    R3,R3,#1
-            STRB    R3,[R1,#NUM_ENQD]
-            
-;---------- if IN_PTR >= BUF_PAST, wrap around buffer
-            LDR     R3,[R1,#IN_PTR]
-            LDR     R4,[R1,#BUF_PAST]
-            CMP     R3,R4
-            BGE     EnqueueWrapBuffer
-            B       EnqueueSuccess
+; Increment IN_PTR
+        ADDS    R3,R3,#1
+        STR     R3,[R1,#IN_PTR]
+        
+; Increment enqueued elements number
+        LDRB    R3,[R1,#NUM_ENQD]
+        ADDS    R3,R3,#1
+        STRB    R3,[R1,#NUM_ENQD]
+        
+; Wrap around buffer if IN_PTR >= BUF_PAST
+        LDR     R3,[R1,#IN_PTR]
+        LDR     R4,[R1,#BUF_PAST]
+        CMP     R3,R4
+        BGE     EnqueueWrpB
+        B       EnqueueSuccessfull
 
-;---------- wrap around the circular queue
-EnqueueWrapBuffer
-            LDR     R2,[R1,#BUF_STRT]
-            STR     R2,[R1,#IN_PTR]            ;store IN_PTR to the front of queue
-            B       EnqueueSuccess
-            
-;---------- clear C flag because it successfully enqueued
-EnqueueSuccess
-            MRS     R2,APSR
-            MOVS    R3,#C_MASK
-            LSLS    R2,R2,#C_SHIFT
-            BICS    R2,R2,R3
-            MSR     APSR,R2
-            B       EnqueueEnd
+; Wrap around the circular queue
+EnqueueWrpB
+        LDR     R2,[R1,#BUF_STRT]
+        STR     R2,[R1,#IN_PTR]        ; Store IN_PTR to the front of the queue
+        B       EnqueueSuccessfull
+        
+; Clear C flag because it successfully enqueued
+EnqueueSuccessfull
+        MRS     R2,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R2,R2,#C_SHIFT
+        BICS    R2,R2,R3
+        MSR     APSR,R2
+        B       EnqueueEnd
 
-;---------- set C flag because it failed to enqueue
-EnqueueFailed
-            MRS     R1,APSR
-            MOVS    R3,#C_MASK
-            LSLS    R3,R3,#C_SHIFT
-            ORRS    R1,R1,R3
-            MSR     APSR,R1
-            B       EnqueueEnd
+; Set C flag because it failed to enqueue
+EnqueueFailure
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R3,R3,#C_SHIFT
+        ORRS    R1,R1,R3
+        MSR     APSR,R1
+        B       EnqueueEnd
 
-;---------- end Enqueue subroutine
+; End Enqueue subroutine
 EnqueueEnd  POP     {R1-R4}
-            BX      LR
-            ENDP
-
-
-
+        BX      LR
+        ENDP
 ;-------------------------------------------- 
 ; QueueStatus subroutine
-;
-; Prints inpointer, outpointer, and number of elements in queue
-; 
-; Input : R0 - Address of queue record
-; Output: None
+; Prints inpointer, outpointer, and the number of elements
 ;--------------------------------------------
 
 QueueStatus PROC    {R1-R14}
-            PUSH    {R0-R3,LR}
+        PUSH    {R0-R3,LR}
 
-            LDR     R1,[R0,#IN_PTR]
-            LDR     R2,[R0,#OUT_PTR]
-            LDRB    R3,[R0,#NUM_ENQD]
+        LDR     R1,[R0,#IN_PTR]
+        LDR     R2,[R0,#OUT_PTR]
+        LDRB    R3,[R0,#NUM_ENQD]
 
-;---------- print "   In="
-            LDR     R0,=Spaces
-            BL      PutStringSB
-            LDR     R0,=In
-            BL      PutStringSB
+; Print "   In="
+        LDR     R0,=Spaces
+        BL      PutStringSB
+        LDR     R0,=In
+        BL      PutStringSB
 
-;---------- print IN_PTR address of queue
-            MOVS    R0,R1
-            BL      PutNumHex
+; Print IN_PTR address of the queue
+        MOVS    R0,R1
+        BL      PutNumHex
 
-;---------- print "   Out="
-            LDR     R0,=Spaces
-            BL      PutStringSB
-            LDR     R0,=Out
-            BL      PutStringSB
+; Print "   Out="
+        LDR     R0,=Spaces
+        BL      PutStringSB
+        LDR     R0,=Out
+        BL      PutStringSB
 
-;---------- print OUT_PTR address of queue
-            MOVS    R0, R2
-            BL      PutNumHex
+; Print OUT_PTR address of the queue
+        MOVS    R0,R2
+        BL      PutNumHex
 
-;---------- print "   Num="
-            LDR     R0,=Spaces
-            BL      PutStringSB
-            LDR     R0,=Num
-            BL      PutStringSB
+; Print "   Num="
+        LDR     R0,=Spaces
+        BL      PutStringSB
+        LDR     R0,=Num
+        BL      PutStringSB
 
-;---------- print queue length
-            MOVS    R0,R3
-            BL      PutNumU
+; Print queue length
+        MOVS    R0,R3
+        BL      PutNumU
 
-            POP     {R0-R3,PC}
-            ENDP
-
-
-
+        POP     {R0-R3,PC}
+        ENDP
 ;-------------------------------------------- 
 ; DequeueStatus subroutine
-;
-; Prints inpointer, outpointer, and number of elements in queue
-; with extra spaces after "In: "
-;
-; Input : R0 - Address of queue record
-; Output: None
+; Prints inpointer, outpointer, and the number of elements 
 ;--------------------------------------------
 
 DequeueStatus  PROC    {R1-R14}
-            PUSH    {R0-R3,LR}
+        PUSH    {R0-R3,LR}
 
-            LDR     R1,[R0,#IN_PTR]
-            LDR     R2,[R0,#OUT_PTR]
-            LDRB    R3,[R0,#NUM_ENQD]
+        LDR     R1,[R0,#IN_PTR]
+        LDR     R2,[R0,#OUT_PTR]
+        LDRB    R3,[R0,#NUM_ENQD]
 
-;---------- print "   In="
-            LDR     R0,=Spaces_DQ
-            BL      PutStringSB
-            LDR     R0,=In
-            BL      PutStringSB
+; Print "   In="
+        LDR     R0,=Spaces_DQ
+        BL      PutStringSB
+        LDR     R0,=In
+        BL      PutStringSB
 
-;---------- print IN_PTR address of queue
-            MOVS    R0,R1
-            BL      PutNumHex
+; Print IN_PTR address of the queue
+        MOVS    R0,R1
+        BL      PutNumHex
 
-;---------- print "   Out="
-            LDR     R0,=Spaces
-            BL      PutStringSB
-            LDR     R0,=Out
-            BL      PutStringSB
+; Print "   Out="
+        LDR     R0,=Spaces
+        BL      PutStringSB
+        LDR     R0,=Out
+        BL      PutStringSB
 
-;---------- print OUT_PTR address of queue
-            MOVS    R0, R2
-            BL      PutNumHex
+; Print OUT_PTR address of the queue
+        MOVS    R0,R2
+        BL      PutNumHex
 
-;---------- print "   Num="
-            LDR     R0,=Spaces
-            BL      PutStringSB
-            LDR     R0,=Num
-            BL      PutStringSB
+; Print "   Num="
+        LDR     R0,=Spaces
+        BL      PutStringSB
+        LDR     R0,=Num
+        BL      PutStringSB
 
-;---------- print queue length
-            MOVS    R0,R3
-            BL      PutNumU
+; Print queue length
+        MOVS    R0,R3
+        BL      PutNumU
 
-            POP     {R0-R3,PC}
-            ENDP
-
+        POP     {R0-R3,PC}
+        ENDP
 
 
 ;-------------------------------------------- 
@@ -1006,7 +1248,7 @@ Input       BL      GetChar                   ;get next char of string
             CMP     R0,#BS                    ;check for backspace
             BEQ     Input_BS
 
-            BL      PutChar                   ;echo to terminal
+            BL      PutChar                   ;show to terminal
             STRB    R0,[R3,R2]                ;store input char in string array
 
             SUBS    R1,R1,#1                  ;decrement number of chars left to read
@@ -1051,7 +1293,7 @@ ReadChar    LDRB    R0,[R2,#0]
             
             CMP     R0,#NULL                  ;if none
             BEQ     EndPutStringSB            ;end
-            BL      PutChar                   ;echo to terminal
+            BL      PutChar                   ;show to terminal
             
             ADDS    R2,R2,#1                  ;point to next value
             CMP     R2,R1
@@ -1093,7 +1335,7 @@ DIV10       CMP     R0,#10                    ;check if num < 10
             B       DIV10                     ;keep diving by 10 until it can't
            
 EndPutNumU  ADDS    R0,R0,#'0'                ;convert to ascii
-            BL      PutChar                   ;echo to terminal
+            BL      PutChar                   ;show to terminal
             SUBS    R2,R2,#1                  ;decrement string array
 
 PrintChar   LDR     R0,=StringReversal        ;array iteration
@@ -1104,7 +1346,7 @@ PrintChar   LDR     R0,=StringReversal        ;array iteration
             MOVS    R0,R1
 
             ADDS    R0,R0,#'0'                ;convert to ascii
-            BL      PutChar                   ;echo to terminal
+            BL      PutChar                   ;show to terminal
 
             SUBS    R2,R2,#1
             B       PrintChar
@@ -1166,13 +1408,13 @@ DONE        POP     {R2-R3}      ;remove from stack
 
 
 ;-------------------------------------------- 
-; MoveCursor subroutine
+; NewLine subroutine
 ;
-; Echo character with a carriage return
+; show character with a carriage return
 ; and move the cursor to the next line
 ;--------------------------------------------
 
-MoveCursor  PROC    {R0-R14}
+NewLine  PROC    {R0-R14}
             PUSH    {R0,LR}                    ;for nested subroutine
            
             MOVS    R0,#CR
@@ -1265,11 +1507,11 @@ __Vectors_Size  EQU     __Vectors_End - __Vectors
 
 Prompt          DCB      "Type a queue command (D, E, H, P, S): ",NULL
                 ALIGN
-Prompt_E        DCB      "Character to enqueue: ",NULL
+EnqueuePrompt        DCB      "Character to enqueue: ",NULL
                 ALIGN
 Success         DCB      "Success: ",NULL
                 ALIGN
-Failure         DCB      "Failure: ",NULL
+FailurePrint         DCB      "FailurePrint: ",NULL
                 ALIGN
 Help            DCB      "D (dequeue), E (enqueue), H (help}, P (print), S (status)",NULL
                 ALIGN
