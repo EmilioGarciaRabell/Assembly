@@ -53,6 +53,7 @@ Error PROC
 	; Add error handling code here
 	BX LR ; Return from error handling subroutine
 ENDP
+
 /*
 2. Describe the details of initializing UART0 to generate interrupt requests, as used in lab. Be
 sure to describe all control register bits that must be set and/or cleared to enable interrupts and
@@ -60,27 +61,112 @@ why each bit/field must have the value that you indicate. (Omit details of any U
 initialization not specifically associated with enabling the interrupts used in lab.) 
  */
 
+To enable UART0 interrupts for the lab, perform the following steps:
 
-When initializing the UART0 to generate interrupt requests you would begin the same similar to initializing the UART0 polling by enabling via setting the clock control register and then configure the UART0 to have a baud rate of 9600 by dealing with the UART0_BDH and UART0_BDL registers. You will then set the fifth bit UART0_C2_TIE to 1 enabling the transmit interrupt this must be set to one because it generates an interrupt request to send the next character when the transmit buffer is empty. Next, the 7th bit UART0_C2_RIE is also set to one to enable the recieve interrupt that allows a new interrupt request to be generated when new received data is available in the receive buffer. The status registers UART0_S1 and UART0_S2 clear any flags and status bits, this must be done for UART to handle interrupts.
+1. Enable clock control register.
+2. Set UART0_BDH and UART0_BDL for a baud rate of 9600.
+3. Set UART0_C2_TIE (5th bit) to enable transmit interrupt requests on empty buffer.
+4. Set UART0_C2_RIE (7th bit) to enable receive interrupt requests on new data.
+5. Clear flags in UART0_S1 and UART0_S2 status registers for proper interrupt handling.
+
+
+
+;3. For each of the following aspects of execution, explain how the specified types of code differ. (A,B,C)
 
 3A.
-Subroutines are specifically invoked via the main program, the programmer specifies where in the program it should be executed. They need a call instruction (BL) to be executed. 
 
-Unlike a subroutine, ISR is asynchronously invoked by a response to an external action event directly form the hardware. 
+i. Subroutine Invocation:
 
-Seperate from an ISR, an exeception handler is also invoked by a response but this response is to a pre-determined exceptional condition. When code tells the computer to do an illegal operation such as (1/0).
+Triggered by a BL (branch with link) instruction within the main program, allowing for explicit calls to the subroutine.
+ii. ISR Invocation:
 
+Asynchronously initiated by hardware or external events, interrupting the normal program flow.
+iii. Exception Handler Invocation:
+
+Responds to predefined exceptional conditions, such as attempting an illegal operation (e.g., division by zero).
 3B.
-Subroutine: Invoked at specified points where the programmer calls it in the program. Only executes when the computer encounters a call instruction of that subroutine.
 
-ISR: Invoked when an external  event interrupts the flow of the program. Not executed until computer acknowledges interrupt request signal.
+i. Subroutine Conditions for Invocation:
 
-Exception Handler: Invoked when computer hits a pre-determined exceptional situation while executing instructions. Only executes when  an exceptional condition is detected by the computer.
+Main program explicitly calls the subroutine using a BL instruction.
+ii. ISR Conditions for Invocation:
 
+External events or hardware interrupts trigger ISR execution.
+iii. Exception Handler Conditions for Invocation:
+
+Predefined exceptional conditions in the program's execution flow lead to the invocation of an exception handler.
 3C.
-Subroutine: Computer saves the return address registers (LR) to make sure it can return to the program execution after the subroutine is called and executed. After the subroutine is executed, the computer restores registers saved with their designated data and thr program finishes executing from the point of the return address.
 
-ISR & Exceptions: The computer will save the data at the PC register to load new data intop that is specified for the ISR/Exception, and executes that ISR/Exception. The PC register data is then restored and the execution of the program is resumed from the point where it was interrupted.
+i. Actions After Subroutine Invocation:
+
+Save return address, execute subroutine, and then resume from the saved address.
+ii. Actions After ISR and Exception Handler Invocation:
+
+Save current program counter, execute ISR/exception, and then resume from the original program counter.
+
+/*
+4. Unlike the Cortex-M0+, some CPUs have a specific instruction to return from an interrupt,
+(e.g., Atmel/Microchip AVR RETI, IBM Power RFI, Intel 80x86 IRET, Motorola 68xxx RTS,
+Motorola/Freescale/NXP 68HCxxx RTI). However the Cortex-M0+, uses the same
+instructions to return from an interrupt that are used to return from a subroutine, (i.e., BX LR
+or POP {PC}). Since returning from an interrupt requires more actions than just changing PC,
+how is the Cortex-M0+ able to distinguish between returning from a subroutine and returning
+from an interrupt so that all of the necessary actions are performed?
+ */
+The Cortex-M0+ manages context saving and restoration through the Nested Vectored Interrupt Controller (NVIC).
+The identical return instructions (BX LR or POP {PC}) can be used for both subroutines and interrupts since
+the NVIC makes sure that the required steps are taken when returning from an interrupt.
+
+
+;5. Write an assembly language macro (called COUNT) according to the specifications:
+
+MACRO
+    COUNT $Point,$Word,$Return
+;----------------------------------------------------
+; Description: Counts the number of nonzero elements in 
+; an array of words
+; 
+; Inputs:
+;   $Point  - Points to the array of words (Arbitrary low register)
+;   $Word   - Number of array elements
+;
+; Outputs:
+;   $Return - Number of non-zero elements
+; Registers:
+;   $Reg    - Temporary register for processing
+;----------------------------------------------------
+
+    ASRS $Reg,$Word,$Log2Divisor
+    ; $Reg = $Word / (2^$Log2Divisor)
+    MEND
+
+PUSH {LR} ; Save the link register
+
+    ; Initialize loop counter
+    MOVS $Return, #0
+
+    ; Loop array elements
+    Loop
+        ; Load the word from memory at pointer
+        LDR $Reg, [$Point, #4]
+
+        ; Check if the word is nonzero element
+        CMP $Reg, #0
+        BEQ Skip 
+
+        ; Increment counter
+        ADDS $Return, $Return, #1
+
+    Skip
+        ; Decrement number of words looped over
+        SUBS $Word, $Word, #1
+
+        ; Check if all words have been looped over
+        BNE Loop ; Repeat loop if not
+
+POP {LR} ; Restore the link register
+    MEND
+
 
 
 

@@ -4,11 +4,12 @@
 ;The objective of this exercise is to implement interrupt-based serial
 ;communication with the KL05 UART using circular FIFO queues for receiving
 ;and transmitting serial data
-;Name: 
+;Name: Emilio Garcia Rabell
 ;Class: CMPE-250
 ;---------------------------------------------------------------
 ;Keil Template for KL05
 ;R. W. Melton
+
 ;September 13, 2020
 ;****************************************************************
 ;Assembler directives
@@ -237,165 +238,165 @@ main
 ;---------------------------------------------------------------
 
 ;>>>>> begin main program code <<<<<
-            BL      Init_UART0_IRQ      ;initialize UART0 for serial driver
+        BL      Init_UART0_IRQ      ;initialize UART0 
 
-            LDR     R0,=QBuffer         ;input param: load queue buffer
-            LDR     R1,=QRecord         ;input param: load queue record
-            MOVS    R2,#Q_BUF_SZ        ;input param: load queue buffer size
-            BL      InitQueue           ;initialize queue structure
-            
-EchoPrompt  LDR     R0,=Prompt          ;load prompt constant
-            MOVS    R1,#MAX_STRING
-            BL      PutStringSB         ;print prompt
-            
-MainPrompt  BL      GetChar             ;get input     
-            BL      PutChar             ;echo input
+        LDR     R0,=QBuffer         ;load queue buffer
+        LDR     R1,=QRecord         ;load queue record
+        MOVS    R2,#Q_BUF_SZ        ;load queue buffer size
+        BL      InitQueue           ;initialize queue structure
 
-;---------- convert input char to uppercase
-            CMP     R0,#'a'
-            BLO     ValidInput
-            CMP     R0,#'z'
-            BHI     ValidInput
-            SUBS    R0,R0,#'a'          ;remove ASCII of lowercase letter
-            ADDS    R0,R0,#'A'          ;add ASCII of uppercase letter
+        EchoPrompt  LDR     R0,=Prompt          ;load prompt constant
+        MOVS    R1,#MAX_STRING
+        BL      PutStringSB         ;print prompt
 
-;---------- check if input character is valid
-ValidInput  CMP     R0,#'D'             ;dequeue if entered D
-            BEQ     command_D
-            CMP     R0,#'E'             ;enqueue if entered E
-            BEQ     command_E
-            CMP     R0,#'H'             ;display help if entered H
-            BEQ     command_H
-            CMP     R0,#'P'             ;print queue contents if entered P
-            BEQ     command_P
-            CMP     R0,#'S'             ;print queue status if entered S
-            BEQ     command_S
-            BL      MoveCursor          ;add newline
-            B       EchoPrompt          ;repeat prompt if invalid
+        MainPrompt  BL      GetChar             ;get input     
+        BL      PutChar             ;echo input
 
+        ;---------- convert input char to uppercase
+        CMP     R0,#'a'
+        BLO     ValidInput
+        CMP     R0,#'z'
+        BHI     ValidInput
+        SUBS    R0,R0,#'a'          ;remove ASCII of lowercase letter
+        ADDS    R0,R0,#'A'          ;add ASCII of uppercase letter
 
-;--- perform dequeue operation
-command_D   BL      MoveCursor
-
-;---------- load input parameters
-            LDR     R0,=QBuffer
-            LDR     R1,=QRecord
-            MOVS    R2,#Q_BUF_SZ
-         
-            BL      Dequeue             ;remove from queue
-            BCS     DequeueError        ;dequeue failed if flag is set
-
-            BL      PutChar             ;print retrieved value
-            MOVS    R0,#":"
-            BL      PutChar
-         
-            LDR     R0,=QRecord         ;load queue record
-            BL      DequeueStatus       ;display status
-            BL      MoveCursor          ;go to next line
-            B       EchoPrompt          ;echo prompt again
-
-;---------- echo dequeue failed and restart
-DequeueError
-            LDR     R0,=Failure         ;load failure message
-            BL      PutStringSB         ;echo message
-            LDR     R0,=QRecord         ;load queue record
-            BL      QueueStatus         ;display status
-            BL      MoveCursor          ;go to next line
-            B       EchoPrompt          ;echo prompt again
+        ;---------- check if input character is valid
+        ValidInput  CMP     R0,#'D'             ;dequeue if entered D
+        BEQ     command_D
+        CMP     R0,#'E'             ;enqueue if entered E
+        BEQ     command_E
+        CMP     R0,#'H'             ;display help if entered H
+        BEQ     command_H
+        CMP     R0,#'P'             ;print queue contents if entered P
+        BEQ     command_P
+        CMP     R0,#'S'             ;print queue status if entered S
+        BEQ     command_S
+        BL      MoveCursor          ;add newline
+        B       EchoPrompt          ;repeat prompt if invalid
 
 
-;--- perform enqueue operation
-command_E   BL      MoveCursor          ;move to next line
-            LDR     R0,=Prompt_E        ;load prompt
-            BL      PutStringSB         ;echo prompt
-         
-;---------- load input params
-            LDR     R0,=QBuffer
-            LDR     R1,=QRecord
-            MOVS    R2,#Q_BUF_SZ         
+        ;--- perform dequeue operation
+        command_D   BL      MoveCursor
 
-            BL      GetChar             ;get input char
-            BL      PutChar             ;echo char
-            BL      Enqueue             ;add to queue
-            BCS     EnqueueError        ;enqueue failed if flag is set
+        ;---------- load input parameters
+        LDR     R0,=QBuffer
+        LDR     R1,=QRecord
+        MOVS    R2,#Q_BUF_SZ
 
-;---------- print enqueue status in a new line
-            BL      MoveCursor
-            LDR     R0,=Success
-            BL      PutStringSB
+        BL      Dequeue             ;remove from queue
+        BCS     DequeueError        ;dequeue failed if flag is set
 
-;---------- print queue record and repeat prompt
-            LDR     R0,=QRecord
-            BL      QueueStatus
-            BL      MoveCursor
-            B       EchoPrompt
+        BL      PutChar             ;print retrieved value
+        MOVS    R0,#":"
+        BL      PutChar
 
-;---------- echo enqueue failed and restart
-EnqueueError
-            BL      MoveCursor
-            LDR     R0,=Failure
-            BL      PutStringSB
-            LDR     R0,=QRecord
-            BL      QueueStatus
-            BL      MoveCursor
-            B       EchoPrompt
-            
+        LDR     R0,=QRecord         ;load queue record
+        BL      DequeueStatus       ;display status
+        BL      MoveCursor          ;go to next line
+        B       EchoPrompt          ;echo prompt again
 
-;--- display help options
-command_H   BL      MoveCursor           ;go to next line
-            LDR     R0,=Help             ;load help message
-            BL      PutStringSB          ;display message
-            BL      MoveCursor           ;go to next line
-            B       EchoPrompt           ;echo prompt
-            
-;--- display queue status
-command_S   BL      MoveCursor
-            LDR     R0,=Status
-            BL      PutStringSB
-            LDR     R0,=QRecord
-            BL      QueueStatus
-            BL      MoveCursor
-            B       EchoPrompt
-            
-;--- print queued characters
-command_P   BL      MoveCursor
-            PUSH    {R0-R4}
-            MOVS    R0,#'>'
-            BL      PutChar
-         
-;---------- load parameters
-            LDR     R1,=QRecord
-            LDR     R0,=QBuffer
-            LDRB    R2,[R1,#NUM_ENQD]
-            LDR     R3,[R1,#OUT_PTR]    
+        ;---------- echo dequeue failed and restart
+        DequeueError
+        LDR     R0,=Failure         ;load failure message
+        BL      PutStringSB         ;echo message
+        LDR     R0,=QRecord         ;load queue record
+        BL      QueueStatus         ;display status
+        BL      MoveCursor          ;go to next line
+        B       EchoPrompt          ;echo prompt again
 
-PrintNext   CMP     R2,#0                 ;if end of buffer,
-            BEQ     Quit                  ;then quit
 
-;---------- print queue characters
-            LDRB    R4,[R3,#0]
-            PUSH    {R0}
-            MOVS    R0,R4                 ;move char to R0 for printing
-            BL      PutChar
-            POP     {R0}
+        ;--- perform enqueue operation
+        command_E   BL      MoveCursor          ;move to next line
+        LDR     R0,=Prompt_E        ;load prompt
+        BL      PutStringSB         ;echo prompt
 
-            SUBS    R2,R2,#1              ;decrement queue chars left to read
-            ADDS    R3,R3,#1              ;increment OUT_PTR  
-         
-            LDR     R4,[R1,#BUF_PAST]
-            CMP     R3,R4                 ;compare OUT_PTR and BUF_PAST
-            BEQ     WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
-            B       PrintNext
+        ;---------- load input params
+        LDR     R0,=QBuffer
+        LDR     R1,=QRecord
+        MOVS    R2,#Q_BUF_SZ         
 
-WrapQueue   LDR     R3,[R1,#BUF_STRT]
-            B       PrintNext
-         
-Quit        MOVS    R0,#'<'               ;move delimeter to R0
-            BL      PutChar               ;print delimeter
-            BL      MoveCursor            ;go to next line
-            POP     {R0-R4}
-            B       EchoPrompt
-            
+        BL      GetChar             ;get input char
+        BL      PutChar             ;echo char
+        BL      Enqueue             ;add to queue
+        BCS     EnqueueError        ;enqueue failed if flag is set
+
+        ;---------- print enqueue status in a new line
+        BL      MoveCursor
+        LDR     R0,=Success
+        BL      PutStringSB
+
+        ;---------- print queue record and repeat prompt
+        LDR     R0,=QRecord
+        BL      QueueStatus
+        BL      MoveCursor
+        B       EchoPrompt
+
+        ;---------- echo enqueue failed and restart
+        EnqueueError
+        BL      MoveCursor
+        LDR     R0,=Failure
+        BL      PutStringSB
+        LDR     R0,=QRecord
+        BL      QueueStatus
+        BL      MoveCursor
+        B       EchoPrompt
+
+
+        ;--- display help options
+        command_H   BL      MoveCursor           ;go to next line
+        LDR     R0,=Help             ;load help message
+        BL      PutStringSB          ;display message
+        BL      MoveCursor           ;go to next line
+        B       EchoPrompt           ;echo prompt
+
+        ;--- display queue status
+        command_S   BL      MoveCursor
+        LDR     R0,=Status
+        BL      PutStringSB
+        LDR     R0,=QRecord
+        BL      QueueStatus
+        BL      MoveCursor
+        B       EchoPrompt
+
+        ;--- print queued characters
+        command_P   BL      MoveCursor
+        PUSH    {R0-R4}
+        MOVS    R0,#'>'
+        BL      PutChar
+
+        ;---------- load parameters
+        LDR     R1,=QRecord
+        LDR     R0,=QBuffer
+        LDRB    R2,[R1,#NUM_ENQD]
+        LDR     R3,[R1,#OUT_PTR]    
+
+        PrintNext   CMP     R2,#0                 ;if end of buffer,
+        BEQ     Quit                  ;then quit
+
+        ;---------- print queue characters
+        LDRB    R4,[R3,#0]
+        PUSH    {R0}
+        MOVS    R0,R4                 ;move char to R0 for printing
+        BL      PutChar
+        POP     {R0}
+
+        SUBS    R2,R2,#1              ;decrement queue chars left to read
+        ADDS    R3,R3,#1              ;increment OUT_PTR  
+
+        LDR     R4,[R1,#BUF_PAST]
+        CMP     R3,R4                 ;compare OUT_PTR and BUF_PAST
+        BEQ     WrapQueue             ;wrap queue if OUT_PTR >= BUF_PAST
+        B       PrintNext
+
+        WrapQueue   LDR     R3,[R1,#BUF_STRT]
+        B       PrintNext
+
+        Quit        MOVS    R0,#'<'               ;move delimeter to R0
+        BL      PutChar               ;print delimeter
+        BL      MoveCursor            ;go to next line
+        POP     {R0-R4}
+        B       EchoPrompt
+
 ;-------------------------------------------
 ;>>>>>   end main program code <<<<<
 ;Stay here
