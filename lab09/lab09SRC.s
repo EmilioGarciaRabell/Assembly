@@ -407,89 +407,70 @@ Quit        MOVS    R0,#'<'               ;move delimeter to R0
 
 
 ;-------------------------------------------- 
-; UART0_ISR subroutine for handling UART0 transmit 
-; and receive interrupts. No register changes value
-; after return
-;
-; Pseudocode:
-; mask interrupts and push registers
-; if (TxInterruptEnabled) then
-;     if (TxInterrupt) then
-;         dequeue character from TxQueue
-;         if (DequeueSuccessful) then
-;             write char to UART0_D (Tx data reg)
-;         else
-;             disable TxInterrupt
-; if (RxInterrupt) then
-;     read character from UART0_D
-;     enqueue character in RxQueue
-; pop registers and unmask interrupts
-;
-; Input : None
-; Output: None
+; UART_ISR subroutine to handle UART0 transmit and interrupts
 ;--------------------------------------------
 
-UART0_ISR   PROC    {}
-            CPSID   I                     ;mask other interrupts
-            PUSH    {LR}                  ;automatically preserves R0-R3
-            LDR     R0,=UART0_BASE        ;load UART0_BASE
-            
-;---------- if Tx Interrupt is enabled, go to TxInterruptEnabled
-            LDRB    R1,[R0,#UART0_C2_OFFSET]
-            MOVS    R2,#0x80
-            ANDS    R1,R1,R2
-            CMP     R1,#0
-            BNE     TxInterruptEnabled
+UART0_ISR   PROC    
+	CPSID   I           ;mask  interrupts
+	PUSH    {LR}    
+	LDR     R0,=UART0_BASE  ;load UART0_BASE
+	
+;---if(TxInterrupt)
+	LDRB    R1,[R0,#UART0_C2_OFFSET]
+	MOVS    R2,#0x80
+	ANDS    R1,R1,R2
+	CMP     R1,#0
+	BNE     TxInterruptEnabled ; go to TxInterruptEnabled
 
-;---------- if Tx Interrupt is disabled, check for Rx Interrupt
+;--If(Not TxInterrupt) { check for Rx Interrupt
 CheckTxInterrupt
-            LDRB    R1,[R0,#UART0_S1_OFFSET]
-            MOVS    R2,#0x10
-            ANDS    R1,R1,R2
-            CMP     R1,#0
-            BEQ     End
-            
+	LDRB    R1,[R0,#UART0_S1_OFFSET]
+	MOVS    R2,#0x10
+	ANDS    R1,R1,R2
+	CMP     R1,#0
+	BEQ     End
+	
 ;---------- store received character in R0
-            LDR     R0,=UART0_BASE
-            LDRB    R3,[R0,#UART0_D_OFFSET]
-            
+	LDR     R0,=UART0_BASE
+	LDRB    R3,[R0,#UART0_D_OFFSET]
+	
 ;---------- enqueue stored character
-            LDR     R1,=RxQRecord           ;load input param for queue
-            MOVS    R0,R3
-            BL      Enqueue
-            BL      End
-            
+	LDR     R1,=RxQRecord           ;load input param for queue
+	MOVS    R0,R3
+	BL      Enqueue
+	BL      End
+	
 ;---------- Tx Interrupt is enabled
 TxInterruptEnabled
-            LDRB    R1,[R0,#UART0_S1_OFFSET]
-            MOVS    R2,#0x80
-            ANDS    R1,R1,R2
-            CMP     R1,#0
-            BEQ     CheckTxInterrupt
-            
+	LDRB    R1,[R0,#UART0_S1_OFFSET]
+	MOVS    R2,#0x80
+	ANDS    R1,R1,R2
+	CMP     R1,#0
+	BEQ     CheckTxInterrupt
+	
 ;---------- dequeue character from Tx queue
-            LDR     R1,=TxQRecord           ;load input param for queue
-            MOVS    R2,#Q_BUF_SZ
-            BL      Dequeue
-            
+	LDR     R1,=TxQRecord           ;load input param for queue
+	MOVS    R2,#Q_BUF_SZ
+	BL      Dequeue
+	
 ;---------- if dequeue is unsuccessul, disable Tx interrupt
-            BCS     DisableTxInterrupt
-            
+	BCS     DisableTxInterrupt
+	
 ;---------- if dequeue is successful, write char to UART0_D
-            LDR     R1,=UART0_BASE
-            STRB    R0,[R1,#UART0_D_OFFSET] ;store transmit char in R0
-            B       End
+	LDR     R1,=UART0_BASE
+	STRB    R0,[R1,#UART0_D_OFFSET] ;store transmit char in R0
+	B       End
 
 ;---------- Tx Interrupt is disabled
 DisableTxInterrupt
-            MOVS    R1,#UART0_C2_T_RI
-            STRB    R1,[R0,#UART0_C2_OFFSET]
-            B       End
-            
+	MOVS    R1,#UART0_C2_T_RI
+	STRB    R1,[R0,#UART0_C2_OFFSET]
+	B       End
+	
 ;---------- unmask interrupts and return
 End         CPSIE   I
-            POP     {PC}
-            ENDP
+	POP     {PC}
+	ENDP
 
 
 
