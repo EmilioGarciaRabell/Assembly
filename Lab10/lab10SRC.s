@@ -409,12 +409,541 @@ main
             BL      Startup
 ;---------------------------------------------------------------
 ;>>>>> begin main program code <<<<<
+    BL      Init_UART0_IRQ
 
+
+;2. Initialize the (byte) Boolean stopwatch run variable RunStopWatch to zero (0).
+;3. Initialize the (word) stopwatch clock count variable Count to zero (0).
+    BL      Init_PIT_IRQ ;4. Use Init_PIT_IRQ from prelab work to initialize the KL05 PIT to generate an interrupt from channel zero every 0.01s.
+
+
+;5. Print the character string shown below to the terminal.
+;Press key for stopwatch command (C,D,H,P,T)
+    
+Restart  
+	LDR     R0,=MainPrompt          ;load prompt constant
+	MOVS    R1,#MAX_STRING
+	BL      PutStringSB         ;print prompt
+
+    BL      NewLine
+    MOVS    R0,'>'
+    BL      PutChar
+
+MainPrompt  
+	BL      GetChar             ;get input     
+	BL      PutChar             ;show input
+
+	;---Dynamic input 
+
+	CMP R0, #96 ;Compare r0 to 97
+	BHI HandleConditions ; if the number is higher than 96, then the value is lower case
+
+	ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
+
+HandleConditions
+	;-- check  input character 
+	CMP     R0,#'c'             ;dequeue if entered D
+	BEQ     handleC
+	CMP     R0,#'d'             ;enqueue if entered E
+	BEQ     handleD
+	CMP     R0,#'h'             ;display help if entered H
+	BEQ     handleH
+	CMP     R0,#'p'             ;print queue contents if entered P
+	BEQ     handleP
+	CMP     R0,#'t'             ;print queue status if entered S
+	BEQ     handleT
+	BL      NewLine          ;add newline
+	B       Restart          ;repeat prompt if invalid
+
+handleC
+    ;Clear—set the stopwatch clock count variable Count to zero (0)
+    LDR     R0,=Count
+    LDR     R0,[R0,#0] ; get count value
+    MOVS    R1,#0
+    STR     R1,[R0,#0] ; Clear the count
+    B       Restart
+
+handleD
+    ;Display—print the current value of the stopwatch clock count variable: >d: 2023 x 0.01 s
+    MOVS    R2,R0 ; Hold the character before showing it
+
+    MOVS    R0,#'>'
+    BL      PutChar
+
+    MOVS    R0,R2
+    BL      PutChar
+
+    MOVS    R0,#':'
+    BL      PutChar
+
+    LDR     R0,=Spaces
+    BL      PutStringSB
+
+    LDR     R0,=Count
+    BL      PutnumUB
+
+    LDR     R0,=PrintDCase
+    BL      PutStringSB
+
+
+
+handleH
+    ;C(lear),D(isplay),H(elp),P(ause),T(ime)
+    LDR     R0,HelpPrompt
+    BL      PutStringSB
+    B       Restart
+handleP
+    ;Pause—clear the Boolean stopwatch variable RunStopWatch to zero
+    LDR     R0,=RunStopWatch
+    LDRB     R0,[R0,#0] ; get count value
+    MOVS    R1,#0
+    STRB     R1,[R0,#0] ; Clear RunStopwatch
+    B       Restart
+handleT
+    ;Time—set the Boolean stopwatch variable RunStopWatch to one 
+    LDR     R0,=RunStopWatch
+    LDR     R0,[R0,#0] ; get count value
+    MOVS    R1,#1
+    STR     R1,[R0,#0] ; set  RunStopwatch
+    B       Restart
 ;>>>>>   end main program code <<<<<
 ;Stay here
             B       .
             ENDP
 ;>>>>> begin subroutine code <<<<<
+
+
+
+;-------------------------------------------------
+; Init_UART0_IRQ Initializes KL05 for 
+; serial communication using UART0.
+;-------------------------------------------------
+
+Init_UART0_IRQ  PROC  {R0-R14}
+        PUSH {R0-R2,LR}
+
+        ; Initialize Rx and Tx queue buffers
+        LDR     R1,=RxQRecord
+        LDR     R0,=RxQBuffer
+        MOVS    R2,#Q_BUF_SZ
+        BL      InitQueue
+
+        LDR     R1,=TxQRecord
+        LDR     R0,=TxQBuffer
+        MOVS    R2,#Q_BUF_SZ
+        BL      InitQueue
+
+        ; Configure UART0 pins and clock
+        LDR     R0,=SIM_SOPT2
+        LDR     R1,=SIM_SOPT2_UART0SRC_MCGFLLCLK
+        LDR     R2,[R0,#0]
+        BICS    R2,R2,R1
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SOPT5
+        LDR     R1,= SIM_SOPT5_UART0_EXTERN_MASK_CLEAR
+        LDR     R2,[R0,#0]
+        BICS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SCGC4
+        LDR     R1,=SIM_SCGC4_UART0_MASK
+        LDR     R2,[R0,#0]
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=SIM_SCGC5
+        LDR     R1,= SIM_SCGC5_PORTB_MASK 
+        LDR     R2,[R0,#0]
+        ORRS    R2,R2,R1
+        STR     R2,[R0,#0]
+
+        LDR     R0,=PORTB_PCR2
+        LDR     R1,=PORT_PCR_SET_PTB2_UART0_RX
+        STR     R1,[R0,#0]
+
+        LDR     R0,=PORTB_PCR1
+        LDR     R1,=PORT_PCR_SET_PTB1_UART0_TX
+        STR     R1,[R0,#0]
+
+        ; Load base address
+        LDR     R0,=UART0_BASE
+
+        ; Disable UART0
+        MOVS    R1,#UART0_C2_T_R
+        LDRB    R2,[R0,#UART0_C2_OFFSET]
+        BICS    R2,R2,R1
+        STRB    R2,[R0,#UART0_C2_OFFSET]
+
+        ; Set UART0_IRQ priority
+        LDR     R0,=UART0_IPR
+        LDR     R1,=NVIC_IPR_UART0_MASK
+        LDR     R2,=NVIC_IPR_UART0_PRI_3
+        LDR     R3,[R0,#0]
+        BICS    R3,R3,R1
+        ORRS    R3,R3,R2
+        STR     R3,[R0,#0]
+
+        ; Clear pending UART0 Interrupts
+        LDR     R0,=NVIC_ICPR
+        LDR     R1,=NVIC_ICPR_UART0_MASK
+        STR     R1,[R0,#0]
+
+        ; Unmask UART0 interrupts
+        LDR     R0,=NVIC_ISER
+        LDR     R1,=NVIC_ISER_UART0_MASK
+        STR     R1,[R0,#0]
+
+        ; Initialize UART0 for 8N1 format at 9600 baud rate
+        LDR     R0,=UART0_BASE
+        MOVS    R1,#UART0_BDH_9600
+        STRB    R1,[R0,#UART0_BDH_OFFSET]
+        MOVS    R1,#UART0_BDL_9600
+        STRB    R1,[R0,#UART0_BDL_OFFSET]
+
+        ; Set UART0 char format and clear flags
+        MOVS    R1,#UART0_C1_8N1
+        STRB    R1,[R0,#UART0_C1_OFFSET]
+        MOVS    R1,#UART0_C3_NO_TXINV
+        STRB    R1,[R0,#UART0_C3_OFFSET]
+        MOVS    R1,#UART0_C4_NO_MATCH_OSR_16
+        STRB    R1,[R0,#UART0_C4_OFFSET]
+        MOVS    R1,#UART0_C5_NO_DMA_SSR_SYNC
+        STRB    R1,[R0,#UART0_C5_OFFSET]
+        MOVS    R1,#UART0_S1_CLEAR_FLAGS
+        STRB    R1,[R0,#UART0_S1_OFFSET]
+        MOVS    R1,#UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS
+        STRB    R1,[R0,#UART0_S2_OFFSET]
+
+        ; Enable UART0
+        MOVS    R1,#UART0_C2_T_R
+        STRB    R1,[R0,#UART0_C2_OFFSET]
+
+        POP     {R0-R2,PC}
+        ENDP
+
+
+
+    ;-------------------------------------------- 
+; GetStringSB subroutine gets a string from user 
+;--------------------------------------------
+
+GetStringSB PROC    {R1-R14}
+            PUSH    {R0-R3,LR}
+            
+            MOVS    R2,#0                     ;initalize string offset
+            MOVS    R3,R0                     ;save input char      
+            
+Input       BL      GetChar                   ;get next char of string
+
+            CMP     R0,#CR                    ;check for carrige return
+            BEQ     EndGetStringSB            ;end
+
+            CMP     R1,#1                     ;check if string ended
+            BEQ     Input                                              
+
+            CMP     R0,#BS                    ;check for backspace
+            BEQ     Input_BS
+
+            BL      PutChar                   ;show to terminal
+            STRB    R0,[R3,R2]                ;store input char in string array
+
+            SUBS    R1,R1,#1                  ;decrement number of chars left to read
+
+            ADDS    R2,R2,#1                  ;add string's offset index           
+            B       Input                     ;loop
+
+Input_BS    CMP     R2,#0
+            BEQ     Input
+            SUBS    R2,R2,#1                  ;decrease offset
+            B       Input
+
+EndGetStringSB
+            MOVS    R0,#0                     ;null termination
+            STRB    R0,[R3,R2]
+            POP     {R0-R3,PC}                ;for nested subroutine
+            ENDP
+
+
+
+;-------------------------------------------- 
+; PutStringSB subroutine displays a string to the terminal
+;--------------------------------------------
+
+PutStringSB PROC    {R0-R14}
+            PUSH    {R0-R2,LR}
+            
+            CMP     R1,#0                     ;if all characters have been processed
+            BEQ     EndPutStringSB            ;end
+            
+            ADDS    R1,R1,R0
+            MOVS    R2,R0                     ;save R0 to R2
+
+ReadChar    LDRB    R0,[R2,#0]
+            
+            CMP     R0,#NULL                  ;if none
+            BEQ     EndPutStringSB            ;end
+            BL      PutChar                   ;show to terminal
+            
+            ADDS    R2,R2,#1                  ;point to next value
+            CMP     R2,R1
+            BNE     ReadChar                  ;loop
+            
+EndPutStringSB
+            POP     {R0-R2,PC}                ;for nested subroutine
+            ENDP
+
+
+
+
+;-------------------------------------------- 
+; NewLine subroutine
+;
+; show character with a carriage return
+; and move the cursor to the next line
+;--------------------------------------------
+
+NewLine  PROC    {R0-R14}
+            PUSH    {R0,LR}                    ;for nested subroutine
+           
+            MOVS    R0,#CR
+            BL      PutChar
+            MOVS    R0,#LF
+            BL      PutChar
+ 
+            POP     {R0,PC}                    ;for nested subroutine
+            ENDP
+
+
+
+ 
+;-------------------------------------------- 
+; Dequeue subroutine
+; Remove an element from the Queue
+;--------------------------------------------
+
+Dequeue     PROC    {R1-R14}
+        PUSH    {R1-R4}
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        CMP     R3,#0                  ; If 0, set PSR C flag
+        BLE     DequeueFailure
+        
+        LDR     R4,[R1,#OUT_PTR]       ; Load OUT_PTR
+        LDRB    R0,[R4,#0]             ; Place removed item in R0
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        SUBS    R3,R3,#1               ; Decrement num of enqueued elements
+        STRB    R3,[R1,#NUM_ENQD]      ; Store updated count
+        
+        ADDS    R4,R4,#1               ; Increment OUT_PTR location
+        
+        LDR     R3,[R1,#BUF_PAST]
+        CMP     R3,R4                  ; Compare OUT_PTR to BUF_PAST
+        BEQ     DequeueWrpB      ; If OUT_PTR >= BUF_PAST, wrap the queue
+        
+        STR     R4,[R1,#OUT_PTR] 
+        B       DequeueSucessfull
+        
+; Wrap around the circular queue
+DequeueWrpB
+        LDR     R3,[R1,#BUF_STRT]
+        STR     R3,[R1,#OUT_PTR]
+
+; Clear C flag because it successfully dequeued
+DequeueSucessfull
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R1,R1,#C_SHIFT
+        BICS    R1,R1,R3
+        MSR     APSR,R1
+        B       DequeueEnd
+
+; Set C flag because it failed to dequeue
+DequeueFailure
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK  
+        LSLS    R3,R3,#C_SHIFT 
+        ORRS    R1,R1,R3
+        MSR     APSR,R1
+        B       DequeueEnd
+
+; End Dequeue subroutine
+DequeueEnd  
+        POP     {R1-R4}
+        BX      LR
+        ENDP        
+
+;-------------------------------------------- 
+; Enqueue subroutine
+; 
+; Description:
+; Put an element into the  Queue
+; 
+;--------------------------------------------
+
+Enqueue     PROC    {R0-R14}
+        PUSH    {R1-R4}
+        
+        LDRB    R3,[R1,#NUM_ENQD]      ; Load enqueued number
+        LDRB    R4,[R1,#BUF_SIZE]      ; Load buffer size
+        CMP     R3,R4                  ; Compare enqueued number with size
+        BGE     EnqueueFailure          ; If NUM_ENQD >= BUF_SIZE, queue is full
+        
+        LDR     R3,[R1,#IN_PTR]        ; Load memory address of IN_PTR
+        STRB    R0,[R3,#0]             ; Store the item to be enqueued in the memory address
+
+; Increment IN_PTR
+        ADDS    R3,R3,#1
+        STR     R3,[R1,#IN_PTR]
+        
+; Increment enqueued elements number
+        LDRB    R3,[R1,#NUM_ENQD]
+        ADDS    R3,R3,#1
+        STRB    R3,[R1,#NUM_ENQD]
+        
+; Wrap around buffer if IN_PTR >= BUF_PAST
+        LDR     R3,[R1,#IN_PTR]
+        LDR     R4,[R1,#BUF_PAST]
+        CMP     R3,R4
+        BGE     EnqueueWrpB
+        B       EnqueueSuccessfull
+
+; Wrap around the circular queue
+EnqueueWrpB
+        LDR     R2,[R1,#BUF_STRT]
+        STR     R2,[R1,#IN_PTR]        ; Store IN_PTR to the front of the queue
+        B       EnqueueSuccessfull
+        
+; Clear C flag because it successfully enqueued
+EnqueueSuccessfull
+        MRS     R2,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R2,R2,#C_SHIFT
+        BICS    R2,R2,R3
+        MSR     APSR,R2
+        B       EnqueueEnd
+
+; Set C flag because it failed to enqueue
+EnqueueFailure
+        MRS     R1,APSR
+        MOVS    R3,#C_MASK
+        LSLS    R3,R3,#C_SHIFT
+        ORRS    R1,R1,R3
+        MSR     APSR,R1
+        B       EnqueueEnd
+
+; End Enqueue subroutine
+EnqueueEnd  POP     {R1-R4}
+        BX      LR
+        ENDP
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------
+;---------------------------------------------------------------
+
+PutNumU     PROC    
+        PUSH    {R0,R1,R2,LR}              ;for nested subroutine
+        MOVS    R2,#0                      ;initalize array offset
+                
+DIV10      
+        CMP     R0,#10                     ;check if num < 10
+        BLT     EndPutNumU
+                
+        MOVS    R1,R0                      ;dividend in R1
+        MOVS    R0,#10                     ;divisor is 10
+        BL      DIVU                       ;divide
+                
+        PUSH    {R0}
+        LDR     R0,=putUvar
+
+        STRB    R1,[R0,R2]
+        ADDS    R2,R2,#1
+        POP     {R0}
+        B       DIV10                      ;keep diving by 10 until it can't
+                
+EndPutNumU  ADDS    R0,R0,#'0'                 ;convert to ascii
+        BL      PutChar                    ;echo to terminal
+        SUBS    R2,R2,#1                   ;decrement string array
+
+PrintChar   LDR     R0,=putUvar         ;array iteration
+        CMP     R2,#0
+        BLT     EndPutNum
+
+        LDRB    R1,[R0,R2]
+        MOVS    R0,R1
+
+        ADDS    R0,R0,#'0'                 ;convert to ascii
+        BL      PutChar                    ;echo to terminal
+
+        SUBS    R2,R2,#1
+        B       PrintChar
+                
+EndPutNum   
+        POP     {R0,R1,R2,PC}              ;for nested subroutine
+        ENDP
+
+
+
+
+;--------------------------------------------
+; Perfdorms integer division
+;--------------------------------------------
+
+DIVU 		PROC 	{R2-R14} ; 
+        PUSH{R2, R3, R4}
+        
+        CMP R0, #0 ; Check if R0 is = 0
+        
+        BEQ DivB0
+
+        
+        MOVS R2, #0 ;
+
+WhileLoopD
+        CMP R1, R0				; while(R0 > R1){
+        BLO Remainder  
+        
+        ADDS R2, R2, #1 		; Quotient++
+        SUBS R1, R1, R0 		; Divisor -= Dividend 
+        
+        B WhileLoopD			;}
+        
+        
+Remainder	
+        
+        MOVS R0, R2 ; New Quotient 
+        
+        MRS R3, APSR
+        MOVS R4, #0x20
+        LSLS R4, R4, #24
+        BICS R3, R3, R4
+        MSR APSR, R3
+        
+        B EndDivu
+        
+DivB0			 
+        MRS R3, APSR
+        MOVS R4, #0x20
+        LSLS R4, R4, #24
+        ORRS R3, R3, R4
+        MSR APSR, R3
+        
+        
+EndDivu
+        
+        POP{R2, R3, R4}
+        BX	LR
+        ENDP 
+		
+
 
 ; Initialize PIT and install PIT_ISR
 
@@ -571,7 +1100,7 @@ __Vectors_Size  EQU     __Vectors_End - __Vectors
 ;Constants
             AREA    MyConst,DATA,READONLY
 ;>>>>> begin constants here <<<<<
-PutPrompt	DCB		"Type queue command (D,E,H,P,S):",0;
+MainPrompt	DCB		"Press key for stopwatch command (C,D,H,P,T)",0;
 SuccessPrompt DCB 	"Success: ",0
 FailurePrompt DCB 	"Failure: ",0
 EnqueuePrompt DCB 	"Character to enqueue: ",0
@@ -580,6 +1109,7 @@ StatusPrompt DCB "Status: ",0
 PrintInHex DCB "In=0x",0
 PrintOutHex DCB "Out=0x",0
 PrintNum DCB "Num=",0
+PrintDCase DCB  " x 0.01 S"
 Spaces          DCB      "   ",0
 ;>>>>>   end constants here <<<<<
             ALIGN
