@@ -1,0 +1,56 @@
+1. Initialize the random number generator (e.g., srand(time(NULL)) to seed the generator).
+
+2. Generate a random number using rand().
+
+3. Use the modulo operator (%) to obtain a value between 0 and 3.
+
+4. Optionally, assign the result to a variable for later use.
+
+Pseudocode:
+
+   // Initialize the random number generator
+   srand(current_time);
+
+   // Generate a random number between 0 and 3 (inclusive)
+   random_number = rand() % 4;
+
+   // Use the random number as needed
+
+
+
+1. Check if there is a character in the receive queue.
+
+2. If there is a character:
+    - Perform the desired actions (e.g., set a flag, execute a function, etc.).
+    - Do not dequeue the character.
+
+3. If there is no character:
+    - Continue with the main program or other tasks.
+
+
+
+
+Function ComputeScore(roundNumber, timeTaken):
+    Constants:
+        MAX_ROUND_TIME = 11  ; Maximum time allowed for any round
+
+    Variables:
+        baseScore       ; Base score for the round
+        timePenalty     ; Time penalty for rounds that take longer
+
+    Procedure:
+        IF timeTaken <= MAX_ROUND_TIME - roundNumber:
+            ; Calculate base score based on round number
+            baseScore = roundNumber * 10
+
+            ; Calculate time penalty
+            timePenalty = (MAX_ROUND_TIME - timeTaken) * 5
+
+            ; Final score for the round
+            roundScore = baseScore + timePenalty
+        ELSE:
+            ; If time is up, no time penalty
+            roundScore = roundNumber * 10
+
+        RETURN roundScore
+

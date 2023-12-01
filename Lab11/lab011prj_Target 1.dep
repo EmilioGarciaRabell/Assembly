@@ -1,0 +1,8 @@
+Dependencies for Project 'lab011prj', Target 'Target 1': (DO NOT MODIFY !)
+F (.\Lab11CSRC.c)(0x6568BA82)(--c99 -c --cpu Cortex-M0+ -D__EVAL -g -O0 --apcs=interwork --split_sections-I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="524" -DMKL05Z32xxx4-o .\lab11csrc.o --omf_browse .\lab11csrc.crf --depend .\lab11csrc.d)
+I (C:\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include\MKL05Z4.h)(0x585C24CA)
+F (.\MKL05Z4.s)(0x65355AF3)(--cpu Cortex-M0+ --pd "__EVAL SETA 1" -g --apcs=interwork -I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include--pd "__UVISION_VERSION SETA 524" --pd "MKL05Z32xxx4 SETA 1"--list .\mkl05z4.lst --xref -o .\mkl05z4.o --depend .\mkl05z4.d)
+F (.\lab11SRC.s)(0x6568BECD)(--cpu Cortex-M0+ --pd "__EVAL SETA 1" -g --apcs=interwork -I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include--pd "__UVISION_VERSION SETA 524" --pd "MKL05Z32xxx4 SETA 1"--list .\lab11src.lst --xref -o .\lab11src.o --depend .\lab11src.d)
+I (MKL05Z4.s)(0x65355AF3)
+F (.\Start.s)(0x65355AF3)(--cpu Cortex-M0+ --pd "__EVAL SETA 1" -g --apcs=interwork -I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\Kinetis_KLxx_DFP\1.14.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include--pd "__UVISION_VERSION SETA 524" --pd "MKL05Z32xxx4 SETA 1"--list .\start.lst --xref -o .\start.o --depend .\start.d)
+I (MKL05Z4.s)(0x65355AF3)

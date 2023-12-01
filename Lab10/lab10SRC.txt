@@ -1379,4 +1379,3 @@ TxQRecord       SPACE    Q_REC_SZ
 ;>>>>>   end variables here <<<<<
             ALIGN
             END
-            

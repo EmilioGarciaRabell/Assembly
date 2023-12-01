@@ -1,0 +1,38 @@
+Emilio Garcia Rabell
+
+Assembly and Embedded Programming Homework #5
+
+1. Describe the details of initializing the PIT (timer) to generate interrupt requests, as used
+in lab. Be sure to describe all control register bits that must be set and/or cleared to
+enable interrupts and why each bit/field must have the value that you indicate. (Omit
+details of any PIT initialization not specifically associated with enabling the interrupts
+used in lab.)
+
+
+2. Explain what happens from the time of an interrupt request, (i.e., IRQ line is asserted),
+through the start of executing an interrupt service routine, and then how control returns
+to the interrupted program. Assume that the interrupt request does not occur at the
+same time as any other interrupt request. (Note: !ere are many steps involved, so
+take your time and be specific. !e Arm Cortex-M0+ Devices Generic User Guide
+serves as a good reference for this information, and it is posted on myCourses under
+“Freedom Development Board KL05Z References.”)
+
+
+3. Explain what the Cortex-M0+ “interrupt priority levels” are and how they are used.
+
+
+4. Write assembly language code that uses a stack frame to implement the following highlevel language function and its call. Do not optimize stack access in the function, (i.e.,
+write all intermediate results to variables on the stack frame as indicated in the highlevel language code).
+        /* Global variables */
+        word MemoryWord,
+        Result;
+        /* Function */
+        word InvMemWord (word *Pointer) {
+        word MemWord;
+        MemWord = *Pointer;
+        MemWord = ~MemWord;
+        *Pointer = MemWord;
+        return MemWord;
+        }
+        /* Call */
+        Result = InvMemWord (&MemoryWord); 

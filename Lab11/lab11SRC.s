@@ -1,25 +1,28 @@
             TTL Program Title for Listing Header Goes Here
 ;****************************************************************
 ;Descriptive comment header goes here.
-; Polled Serial I/O
-;Name:  Emilio Garcia Rabell 
-;Date:  -/-/-
-;Class:  CMPE-250 
-;Section:  1
+;(What does the program do?)
+;Name:  <Your name here>
+;Date:  <Date completed here>
+;Class:  CMPE-250
+;Section:  <Your lab section, day, and time here>
 ;---------------------------------------------------------------
-;Keil Template for KL05
+;Keil Template for KL05 Assembly with Keil C startup
 ;R. W. Melton
-;September 13, 2020
+;November 3, 2020
 ;****************************************************************
 ;Assembler directives
             THUMB
-            OPT    64  ;Turn on listing macro expansions
+            GBLL  MIXED_ASM_C
+MIXED_ASM_C SETL  {TRUE}
+            OPT   64  ;Turn on listing macro `ansions
 ;****************************************************************
 ;Include files
-            GET  MKL05Z4.s     ;Included by start.s
-            OPT  1   ;Turn on listing
+            GET  MKL05Z4.s
+            OPT  1          ;Turn on listing
 ;****************************************************************
 ;EQUates
+
 ;Characters
 CR          EQU  0x0D
 LF          EQU  0x0A
@@ -45,6 +48,39 @@ C_SHIFT             EQU     24
 ; Queue delimiters for printed output
 Q_BEGIN_CH  EQU   '>'
 Q_END_CH    EQU   '<'
+	
+MAX_STRING 	EQU 79
+
+
+
+;---------------------------------------------------------------
+;DAC0
+DAC0_BITS   EQU   12
+DAC0_STEPS  EQU   4096
+DAC0_0V     EQU   0x00
+;---------------------------------------------------------------
+;Servo
+SERVO_POSITIONS  EQU  5
+;---------------------------------------------------------------
+PWM_FREQ          EQU  50
+;TPM_SOURCE_FREQ  EQU  48000000
+TPM_SOURCE_FREQ   EQU  47972352
+TPM_SC_PS_VAL     EQU  4
+
+;PWM_DUTY_5       EQU  (PWM_PERIOD / 20)  ;  5% duty cycle
+;PWM_DUTY_10      EQU  (PWM_PERIOD / 10)  ; 10% duty cycle
+PWM_PERIOD        EQU  60000
+PWM_DUTY_10       EQU  6000
+PWM_DUTY_5        EQU  3000
+;---------------------------------------------------------------
+;Number output characteristics
+
+;****************************************************************
+;MACROs
+;****************************************************************
+
+
+
 	
 ;---------------------------------------------------------------
 ;PORTx_PCRn (Port x pin control register n [for pin n])
@@ -184,8 +220,6 @@ UART0_S1_CLEAR_FLAGS  EQU  (UART0_S1_IDLE_MASK :OR: \
 UART0_S2_NO_RXINV_BRK10_NO_LBKDETECT_CLEAR_FLAGS  EQU  \
         (UART0_S2_LBKDIF_MASK :OR: UART0_S2_RXEDGIF_MASK)
 
-MAX_STRING 				EQU 79
-;---------------------------------------------------------------
 
 
 
@@ -370,150 +404,29 @@ UART0_C2_TI_RI  EQU  (UART0_C2_TIE_MASK :OR: UART0_C2_T_RI)
 ;0-->1:LBKDE=LIN break detect enable (disabled)
 ;0-->0:RAF=receiver active flag; read-only
 
-;---------------------------------------------------------------
+
+
+
 ;Program
-;Linker requires Reset_Handler
+;C source will contain main ()
+;Only subroutines and ISRs in this assembly source
             AREA    MyCode,CODE,READONLY
-            ENTRY
-            EXPORT  Reset_Handler
-            IMPORT  Startup
 
-	
-			
-Reset_Handler  PROC  {}
-main
-;---------------------------------------------------------------
+			; Export subroutines
 
-			CPSID 	I
-			BL 		Startup
-;Mask interrupts
-			BL      Init_UART0_IRQ
-			
-			CPSIE   I
-          
-			
-;KL05 system startup with 48-MHz system clock
-       
-;---------------------------------------------------------------
-;>>>>> begin main program code <<<<<
-    
-
-
-;2. Initialize the (byte) Boolean stopwatch run variable RunStopWatch to zero (0).
-;3. Initialize the (word) stopwatch clock count variable Count to zero (0).
-    ;4. Use Init_PIT_IRQ from prelab work to initialize the KL05 PIT to generate an interrupt from channel zero every 0.01s.
-
-
-;5. Print the character string shown below to the terminal.
-;Press key for stopwatch command (C,D,H,P,T)
-    LDR		R0, =RunStopWatch
-	MOVS	R2,#0
-	STRB 	R2,[R0,#0]
-
-	LDR		R0,=Count
-	STR		R2,[R0,#0]
-	BL      Init_PIT_IRQ 
-	 
- 
-	LDR     R0,=MainPromptw          ;load prompt constant
-	MOVS    R1,#MAX_STRING
-	BL      PutStringSB         ;print prompt
-	
-Restart 
-    BL      NewLine
-    MOVS    R0,#'>'
-    BL      PutChar
-
-MainPrompt  
-	BL      GetChar             ;get input     
-	BL      PutChar             ;show input
-
-	;---Dynamic input 
-
-	CMP R0, #96 ;Compare r0 to 97
-	BHI HandleConditions ; if the number is higher than 96, then the value is lower case
-
-	ADDS R0, R0, #32 ;if the value is uppercase then conver it to lowercase, just add 32
-
-HandleConditions
-	;-- check  input character 
-	CMP     R0,#'c'             ;dequeue if entered D
-	BEQ     handleC
-	CMP     R0,#'d'             ;enqueue if entered E
-	BEQ     handleD
-	CMP     R0,#'h'             ;display help if entered H
-	BEQ     handleH
-	CMP     R0,#'p'             ;print queue contents if entered P
-	BEQ     handleP
-	CMP     R0,#'t'             ;print queue status if entered S
-	BEQ     handleT
-	BL      NewLine          ;add newline
-	B       Restart          ;repeat prompt if invalid
-
-handleC
-    ;Clear—set the stopwatch clock count variable Count to zero (0)
-	
-    LDR     R0,=Count
-    ;LDR     R0,[R0,#0] ; get count value
-    MOVS    R1,#0
-    STR     R1,[R0,#0] ; Clear the count
-    B       Restart
-	
-handleD
-    ;Display—print the current value of the stopwatch clock count variable: >d: 2023 x 0.01 s
-    MOVS    R2,R0 ; Hold the count before showing it
-
-;---- print necessary characters for formatting 
-    MOVS    R0,#':'
-    BL      PutChar
-
-    LDR     R0,=Spaces	
-	MOVS    R1,#MAX_STRING
-    BL      PutStringSB 
-
-    LDR     R0,=Count
-	LDR		R0,[R0,#0] ; print the current count
-    BL 		PutNumU
-
-    LDR     R0,=PrintDCase
-    BL      PutStringSB
-	
-	
-	B		Restart ; return to prompt
-
-
-
-handleH
-    ;C(lear),D(isplay),H(elp),P(ause),T(ime)
-	BL 		NewLine
-    LDR     R0,=HelpPrompt
-    BL      PutStringSB
-	MOVS    R1,#MAX_STRING
-    B       Restart
-	
-handleP
-    ;Pause—clear the Boolean stopwatch variable RunStopWatch to zero
-    LDR     R0,=RunStopWatch
-    ;LDRB     R0,[R0,#0] ; get count value
-    MOVS    R1,#0
-    STR     R1,[R0,#0] ; Clear RunStopwatch
-    B       Restart
-	
-handleT
-    ;Time—set the Boolean stopwatch variable RunStopWatch to one 
-    LDR     R0,=RunStopWatch
-    ;LDRB    R0,[R0,#0] ; get count value
-    MOVS    R1,#1
-    STR    R1,[R0,#0] ; set  RunStopwatch
-    B       Restart
-;>>>>>   end main program code <<<<<
-;Stay here
-            B       .
-            ENDP
+			EXPORT Init_UART0_IRQ
+			EXPORT GetChar
+			EXPORT PutChar
+			EXPORT GetStringSB
+			EXPORT PutStringSB
+			EXPORT NewLine
+			EXPORT InitQueue
+			EXPORT UART0_IRQHandler
+			EXPORT Dequeue
+			EXPORT Enqueue
+			AREA    MyCode,CODE,READONLY
+			ALIGN
 ;>>>>> begin subroutine code <<<<<
-
-
-
 
 ;-------------------------------------------------
 ; Init_UART0_IRQ Initializes KL05 for 
@@ -981,6 +894,7 @@ InitQueue   PROC    {R0-R14}
 ;-------------------------------------------- 
 ; UART_ISR subroutine to handle UART0 transmit and interrupts
 ;--------------------------------------------
+UART0_IRQHandler
 UART0_ISR   PROC    
     CPSID   I               ; Mask interrupts
     PUSH    {LR}            ; Push link register onto the stack
@@ -1167,190 +1081,35 @@ EnqueueEnd  POP     {R1-R4}
         BX      LR
         ENDP
 			
-			
-; Initialize PIT and install PIT_ISR
-
-
-; Initialize PIT IRQ
-
-Init_PIT_IRQ   PROC {R0-R14}
-    PUSH  {R0-R7,LR}
-    ; Enable clock for PIT module
-    LDR R0,=SIM_SCGC6
-    LDR R1,=SIM_SCGC6_PIT_MASK
-    LDR R2,[R0,#0]
-    ORRS R2,R2,R1
-    STR R2,[R0,#0]
-
-    ; Disable PIT timer 0
-    LDR R0,=PIT_CH0_BASE
-    LDR R1,=PIT_TCTRL_TEN_MASK
-    LDR R2,[R0,#PIT_TCTRL_OFFSET]
-    BICS R2,R2,R1
-    STR R2,[R0,#PIT_TCTRL_OFFSET]
-
-    ; Set PIT interrupt priority
-    LDR R0,=PIT_IPR
-    LDR R1,=NVIC_IPR_PIT_MASK
-    LDR R3,[R0,#0]
-    BICS R3,R3,R1
-    STR R3,[R0,#0]
-
-    ; Clear any pending PIT interrupts
-    LDR R0,=NVIC_ICPR
-    LDR R1,=NVIC_ICPR_PIT_MASK
-    STR R1,[R0,#0]
-
-    ; Unmask PIT interrupts
-    LDR R0,=NVIC_ISER
-    LDR R1,=NVIC_ISER_PIT_MASK
-    STR R1,[R0,#0]
-
-    ; Enable PIT module
-    LDR R0,=PIT_BASE
-    LDR R1,=PIT_MCR_EN_FRZ
-    STR R1,[R0,#PIT_MCR_OFFSET]
-
-    ; Set PIT timer 0 period for 0.01 s
-    LDR R0,=PIT_CH0_BASE
-    LDR R1,=PIT_LDVAL_10ms
-    STR R1,[R0,#PIT_LDVAL_OFFSET]
-
-    ; Enable PIT timer 0 interrupt
-    LDR R1,=PIT_TCTRL_CH_IE
-    STR R1,[R0,#PIT_TCTRL_OFFSET]
-
-    POP {R0-R7,PC}
-    ENDP
-
-; PIT ISR
-
-PIT_ISR   PROC     {R0-R14}
-	CPSID	I
-    PUSH     {R0,R1,LR}
-    LDR R0,=RunStopWatch
-    LDRB     R1,[R0,#0]
-	
-    CMP     R1,#0
-    BEQ     ZeroIncrement
-	
-    LDR     R0,=Count
-    LDR     R1,[R0,#0]
-    ADDS     R1,R1,#1
-    STR     R1,[R0,#0]
-
-ZeroIncrement 
-    LDR     R0,=PIT_CH0_BASE
-    LDR     R1,=PIT_TFLG_TIF_MASK
-    STR     R1,[R0,#PIT_TFLG_OFFSET]
-    POP     {R0,R1,PC}
-    ENDP
-
 
 ;>>>>>   end subroutine code <<<<<
             ALIGN
-;****************************************************************
-;Vector Table Mapped to Address 0 at Reset
-;Linker requires __Vectors to be exported
-            AREA    RESET, DATA, READONLY
-            EXPORT  __Vectors
-            EXPORT  __Vectors_End
-            EXPORT  __Vectors_Size
-            IMPORT  __initial_sp
-            IMPORT  Dummy_Handler
-            IMPORT  HardFault_Handler
-__Vectors 
-                                      ;ARM core vectors
-            DCD    __initial_sp       ;00:end of stack
-            DCD    Reset_Handler      ;01:reset vector
-            DCD    Dummy_Handler      ;02:NMI
-            DCD    HardFault_Handler  ;03:hard fault
-            DCD    Dummy_Handler      ;04:(reserved)
-            DCD    Dummy_Handler      ;05:(reserved)
-            DCD    Dummy_Handler      ;06:(reserved)
-            DCD    Dummy_Handler      ;07:(reserved)
-            DCD    Dummy_Handler      ;08:(reserved)
-            DCD    Dummy_Handler      ;09:(reserved)
-            DCD    Dummy_Handler      ;10:(reserved)
-            DCD    Dummy_Handler      ;11:SVCall (supervisor call)
-            DCD    Dummy_Handler      ;12:(reserved)
-            DCD    Dummy_Handler      ;13:(reserved)
-            DCD    Dummy_Handler      ;14:PendSV (PendableSrvReq)
-                                      ;   pendable request 
-                                      ;   for system service)
-            DCD    Dummy_Handler      ;15:SysTick (system tick timer)
-            DCD    Dummy_Handler      ;16:DMA channel 0 transfer 
-                                      ;   complete/error
-            DCD    Dummy_Handler      ;17:DMA channel 1 transfer
-                                      ;   complete/error
-            DCD    Dummy_Handler      ;18:DMA channel 2 transfer
-                                      ;   complete/error
-            DCD    Dummy_Handler      ;19:DMA channel 3 transfer
-                                      ;   complete/error
-            DCD    Dummy_Handler      ;20:(reserved)
-            DCD    Dummy_Handler      ;21:FTFA command complete/
-                                      ;   read collision
-            DCD    Dummy_Handler      ;22:low-voltage detect;
-                                      ;   low-voltage warning
-            DCD    Dummy_Handler      ;23:low leakage wakeup
-            DCD    Dummy_Handler      ;24:I2C0
-            DCD    Dummy_Handler      ;25:(reserved)
-            DCD    Dummy_Handler      ;26:SPI0
-            DCD    Dummy_Handler      ;27:(reserved)
-            DCD    UART0_ISR      ;28:UART0 (status; error)
-            DCD    Dummy_Handler      ;29:(reserved)
-            DCD    Dummy_Handler      ;30:(reserved)
-            DCD    Dummy_Handler      ;31:ADC0
-            DCD    Dummy_Handler      ;32:CMP0
-            DCD    Dummy_Handler      ;33:TPM0
-            DCD    Dummy_Handler      ;34:TPM1
-            DCD    Dummy_Handler      ;35:(reserved)
-            DCD    Dummy_Handler      ;36:RTC (alarm)
-            DCD    Dummy_Handler      ;37:RTC (seconds)
-            DCD    PIT_ISR      ;38:PIT
-            DCD    Dummy_Handler      ;39:(reserved)
-            DCD    Dummy_Handler      ;40:(reserved)
-            DCD    Dummy_Handler      ;41:DAC0
-            DCD    Dummy_Handler      ;42:TSI0
-            DCD    Dummy_Handler      ;43:MCG
-            DCD    Dummy_Handler      ;44:LPTMR0
-            DCD    Dummy_Handler      ;45:(reserved)
-            DCD    Dummy_Handler      ;46:PORTA
-            DCD    Dummy_Handler      ;47:PORTB
-__Vectors_End
-__Vectors_Size  EQU     __Vectors_End - __Vectors
-            ALIGN
-;****************************************************************
+;**********************************************************************
 ;Constants
             AREA    MyConst,DATA,READONLY
 ;>>>>> begin constants here <<<<<
-MainPromptw	DCB		"Press key for stopwatch command (C,D,H,P,T)",0
-			ALIGN
-SuccessPrompt DCB 	"Success: ",0
-			ALIGN
-FailurePrompt DCB 	"Failure: ",0
-			ALIGN
-EnqueuePrompt DCB 	"Character to enqueue: ",0
-			ALIGN
-HelpPrompt 	DCB 	"C(lear),D(isplay),H(elp),P(ause),T(ime)",0
-			ALIGN
-StatusPrompt DCB "Status: ",0
-			ALIGN
-PrintInHex DCB "In=0x",0
-			ALIGN
-PrintOutHex DCB "Out=0x",0
-			ALIGN
-PrintNum DCB "Num=",0
-			ALIGN
-PrintDCase DCB  " x 0.01 S"
-			ALIGN
-Spaces          DCB      "   ",0
+DAC0_table_0
+DAC0_table
+            DCW ((DAC0_STEPS - 1) / (SERVO_POSITIONS * 2))
+            DCW (((DAC0_STEPS - 1) * 3) / (SERVO_POSITIONS * 2)) 
+            DCW (((DAC0_STEPS - 1) * 5) / (SERVO_POSITIONS * 2)) 
+            DCW (((DAC0_STEPS - 1) * 7) / (SERVO_POSITIONS * 2))
+            DCW (((DAC0_STEPS - 1) * 9) / (SERVO_POSITIONS * 2))
+
+PWM_duty_table
+PWM_duty_table_0
+            DCW        (PWM_DUTY_10 - 1)
+            DCW        (((3 * (PWM_DUTY_10 - PWM_DUTY_5) / 4) + PWM_DUTY_5) - 1)
+            DCW        ((((PWM_DUTY_10 - PWM_DUTY_5) / 2) + PWM_DUTY_5) - 1)
+            DCW        ((((PWM_DUTY_10 - PWM_DUTY_5) / 4) + PWM_DUTY_5) - 1)
+            DCW        (PWM_DUTY_5 - 1)
+
 ;>>>>>   end constants here <<<<<
-            ALIGN
-;****************************************************************
+;**********************************************************************
+;>>>>> begin variables here <<<<<
 ;Variables
-            AREA    MyData,DATA,READWRITE
-			;Queue structures
+
+ AREA    MyData,DATA,READWRITE
 QBuffer    SPACE   Q_BUF_SZ
 QRecord    SPACE   Q_REC_SZ
 ;>>>>> begin variables here <<<<<
@@ -1363,20 +1122,19 @@ Count		SPACE 8
 RunStopWatch SPACE 1
 	
 ;--- queue structures
-                ALIGN
+				ALIGN
 
 ;--- from exercise 06
 StringBuffer    SPACE    MAX_STRING
 StringReversal  SPACE    MAX_STRING
-        
+		
 ;--- for exercise 09
-                ALIGN
+				ALIGN
 RxQBuffer       SPACE    X_BUF_SZ
 RxQRecord       SPACE    Q_REC_SZ
-                ALIGN
+				ALIGN
 TxQBuffer       SPACE    X_BUF_SZ
 TxQRecord       SPACE    Q_REC_SZ
+
 ;>>>>>   end variables here <<<<<
-            ALIGN
             END
-            
